@@ -1,14 +1,14 @@
 /*
 **************************************************************************************************************
-* @file     Kratos-Red/dongle_drivers/dongle.c
+* @file     Kratos-Red/dongle_drivers/central_drivers/central.c
 * @author   Ryan Lederhose - 45836705
 * @date     May 2023
-* @brief    nrf52840 Drivers
+* @brief    nrf52840 Drivers - Central BLE
 **************************************************************************************************************
 */
 
 /* Local Library */
-#include "dongle.h"
+#include "central.h"
 
 static void start_scan(void);
 
@@ -50,6 +50,31 @@ static void cmd_scan(const struct shell *shell, size_t argc, char **argv) {
     } else {
         LOG_ERR("Incorrect number of commands");
         return;
+    }
+}
+
+/**
+ * @brief send a gesture over BLE to the RPi
+ * @param shell pointer to shell struct
+ * @param argv argument string array
+*/
+static void cmd_gesture(const struct shell *shell, size_t argc, char **argv) {
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    hciPacket_t pack;
+    pack.preamble = 0xAA;
+    pack.command = GESTURE_CMD;
+
+    //Check for invalid arguments
+    if ((argc != 2) || (strlen(argv[1]) > 1)) {
+        LOG_ERR("Incorrect number of commands");
+        return;
+    }
+
+    if (((int) argv[1][0] - 48) <= 9) {
+        pack.data = ((int) argv[1][0] - 48);
+        gatt_write(hci_write_handle, &pack);
     }
 }
 
@@ -293,30 +318,6 @@ static void hci_write_gatt(struct bt_conn *conn, uint8_t err, struct bt_gatt_wri
  */
 static void hci_read_gatt(struct bt_conn *conn, const struct bt_gatt_attr *attr, 
                 const uint8_t *buf, uint16_t len, uint8_t flags) {
-
-    hciPacket_t pack;
-
-    uint8_t *buffer = buf;
-	
-	//Parse data for message data. Check preamble
-	if (buffer[0] == 0xAA) {
-		for (int i = 0; i < len; i++) {
-			switch (i) {
-				case 0:
-					pack.preamble = buffer[i];
-				case 1:
-					pack.msgLen = buffer[i];
-				case 2:
-					pack.msgRw = buffer[i];
-				case 3:
-					pack.devID = buffer[i];
-				case 4:
-					memcpy(&(pack.msgData), buffer + i, sizeof (uint8_t) * 4);
-				case 8:
-					pack.newLine = buffer[i];
-			}
-		}
-	}     
     return;
 }
 
@@ -367,6 +368,9 @@ void dongle_shell_init() {
 
     //Create and initialise the 'scan' commands
     SHELL_CMD_REGISTER(scan, NULL, "Start or stop scanning for the AHU+SCU device", cmd_scan);
+
+    //Create and initialise the 'gesture' commands
+    SHELL_CMD_REGISTER(gesture, NULL, "Send a gesture to the rpi", cmd_gesture);
 }
 
 /**
@@ -407,7 +411,7 @@ void dongle_shell_thread(void) {
             }
         }
 
-        k_msleep(50);
+        k_msleep(5);
     }
 }
 
