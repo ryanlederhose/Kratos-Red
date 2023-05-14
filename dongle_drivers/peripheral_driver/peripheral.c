@@ -92,6 +92,13 @@ static uint8_t gatt_discover_cb(struct bt_conn *conn, const struct bt_gatt_attr 
 
 			hci_write_handle = chrcGatt->value_handle;  //Save GATT characteristic handle
             chrcFlag = 0x01;
+
+			// Send start command to rpi
+			hciPacket_t pack;
+			pack.preamble = 0xAA;
+			pack.command = RESET_CMD;
+			pack.data = 0x00;
+			k_msgq_put(&command_msgq, &pack, K_NO_WAIT);
         }
 	}
 
@@ -159,6 +166,13 @@ static void connected(struct bt_conn *conn, uint8_t err) {
  * @param reason reason for disconnection
  */
 static void disconnected(struct bt_conn *conn, uint8_t reason) {
+
+	// Send clear command to rpi
+	hciPacket_t pack;
+	pack.preamble = 0xAA;
+	pack.command = CLEAR_CMD;
+	pack.data = 0x00;
+	k_msgq_put(&command_msgq, &pack, K_NO_WAIT);
 
 	//start advertising
 	int err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, ad, ARRAY_SIZE(ad), NULL, 0);
