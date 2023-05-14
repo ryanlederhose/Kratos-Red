@@ -159,20 +159,13 @@ static void connected(struct bt_conn *conn, uint8_t err) {
  * @param reason reason for disconnection
  */
 static void disconnected(struct bt_conn *conn, uint8_t reason) {
-	char addr[BT_ADDR_LE_STR_LEN];
 
-	if (conn != default_conn) {
+	//start advertising
+	int err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, ad, ARRAY_SIZE(ad), NULL, 0);
+	if (err) {
 		return;
 	}
-
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-
-	LOG_ERR("Disconnected: %s (reason 0x%02x)\n", addr, reason);
-
-	bt_conn_unref(default_conn);
-	default_conn = NULL;
-
-	ble_start_advertising();   //start advertising again
+	chrcFlag = 0x00;
 }
 
 /**
