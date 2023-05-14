@@ -65,6 +65,7 @@
 
 //Types of commands
 #define GESTURE_CMD 1
+#define RESET_CMD 2
 
 //Types of gestures
 #define GESTURE_RIGHT 1

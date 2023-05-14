@@ -79,6 +79,29 @@ static void cmd_gesture(const struct shell *shell, size_t argc, char **argv) {
 }
 
 /**
+ * @brief send a gesture over BLE to the RPi
+ * @param shell pointer to shell struct
+ * @param argv argument string array
+*/
+static void cmd_reset(const struct shell *shell, size_t argc, char **argv) {
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    hciPacket_t pack;
+    pack.preamble = 0xAA;
+    pack.command = RESET_CMD;
+    pack.data = 0x00;
+
+    //Check for invalid arguments
+    if (argc != 1) {
+        LOG_ERR("Incorrect number of commands");
+        return;
+    }
+
+    gatt_write(hci_write_handle, &pack);
+}
+
+/**
  * @brief Parse the incoming user data over BLE to create a connection
  * @param data bluetooth struct data
  * @param user_data user data for bluetooth
@@ -371,6 +394,9 @@ void dongle_shell_init() {
 
     //Create and initialise the 'gesture' commands
     SHELL_CMD_REGISTER(gesture, NULL, "Send a gesture to the rpi", cmd_gesture);
+
+    //Create and initialise the 'reset' commands
+    SHELL_CMD_REGISTER(reset, NULL, "Reset the led matrix", cmd_reset);
 }
 
 /**
