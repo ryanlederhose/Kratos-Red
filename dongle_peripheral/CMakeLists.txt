@@ -7,10 +7,10 @@ project(bsu)
 
 #Add Include Directories
 include_directories(
-                        ../../oslib/bsu_drivers/bsu_hci/
+                        ../dongle_drivers/peripheral_driver/
                         )
 
 #Add Target Sources
 target_sources(app PRIVATE 
                     src/main.c 
-                    ../../oslib/bsu_drivers/bsu_hci/bsu_hci.c)
+                    ../dongle_drivers/peripheral_driver/peripheral.c)

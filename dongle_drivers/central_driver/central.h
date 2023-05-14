@@ -1,14 +1,14 @@
 /*
 **************************************************************************************************************
-* @file     Kratos-Red/dongle_drivers/dongle.c
+* @file     Kratos-Red/dongle_drivers/central_drivers/central.h
 * @author   Ryan Lederhose - 45836705
 * @date     May 2023
-* @brief    nrf52840 Drivers
+* @brief    nrf52840 Drivers - Central BLE
 **************************************************************************************************************
 */
 
-#ifndef BSU_DRIVER_H
-#define BSU_DRIVER_H
+#ifndef CENTRAL_DRIVER_H
+#define CENTRAL_DRIVER_H
 
 #include <zephyr/shell/shell.h>
 #include <zephyr/drivers/uart.h>
@@ -63,13 +63,19 @@
 
 #define SIZE_STRUCT (sizeof (hciPacket_t) - 2)
 
+//Types of commands
+#define GESTURE_CMD 1
+
+//Types of gestures
+#define GESTURE_RIGHT 1
+#define GESTURE_LEFT 2
+#define GESTURE_UP 3
+#define GESTURE_DOWN 4
+
 typedef struct __attribute__((packed))_hciPacket {
     uint8_t preamble;
-    uint8_t msgLen;
-    uint8_t msgRw;
-    uint8_t devID;
-    float msgData;
-    uint8_t newLine;
+    uint8_t command;
+    uint8_t data;
 } hciPacket_t;
 
 /**
