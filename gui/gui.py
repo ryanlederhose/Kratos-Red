@@ -12,7 +12,14 @@ current_button = None
 
 button_queue = queue.Queue()
 
-def main(ser):
+def mmw(ser, ser2):
+    while True:
+        ser.write(b"\n")
+        print(ser.readline().decode('utf-8'))
+        print(ser.readline().decode('utf-8'))
+        print(ser.readline().decode('utf-8'))
+
+def bsu(ser):
     button_queue.queue.clear()
     ser.write(b"scan f\n")
     print(ser.readline().decode('utf-8'))
@@ -99,13 +106,15 @@ def plot_scatter(ax):
     ax.set_title('Scatter Plot')
     
 BSU_connected = "Failed to connect to BSU"
-mmW_connected = "Failed to connect to mmW"
+mmW_cli_connected = "Failed to connect to mmW CLI"
+mmW_data_connected = "Failed to connect to mmW data"
 
 def connect_to_com4():
     # Connection to BSU and mmW
-    global BSU_connected, mmW_connected
+    global BSU_connected, mmW_cli_connected, mmW_data_connected
 
     ports = serial.tools.list_ports.comports()
+    port_number = 0
     for port in ports:
         print(f"Port: {port.device}, Description: {port.description}")
         if port.description == "USB Serial Device (" + port.device + ")":
@@ -120,14 +129,25 @@ def connect_to_com4():
             a = ser.readline().decode('utf-8')
             if a == '\x1b[1;32mBSU_SHELL:~$ \x1b[m':
                 print("Starting BSU Thread")
-                bsu_thread = threading.Thread(target=main, args=(ser,))
+                bsu_thread = threading.Thread(target=bsu, args=(ser,))
                 bsu_thread.start()
                 BSU_connected = "Connected to BSU on " + port.device
+            elif a == 'mmwDemo:/>':
+                print("Starting mmW Thread")
+                mmW_cli_connected = "Connected to mmW CLI on " + port.device
+                ser2 = serial.Serial(ports[port_number - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
+                mmW_data_connected = "Connected to mmW Data on " + ports[port_number - 1].device
+                mmw_thread = threading.Thread(target=mmw, args=(ser,ser2))
+                mmw_thread.start()
                 
             else:
                 ser.close()
 
-    messagebox.showinfo("Connection Status", BSU_connected + "\n" + mmW_connected)
+            port_number += 1
+        
+
+    messagebox.showinfo("Connection Status", BSU_connected + "\n" + 
+            mmW_cli_connected + "\n" + mmW_data_connected)
 
 
 
