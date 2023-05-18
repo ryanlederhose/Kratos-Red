@@ -107,11 +107,11 @@ def connect_to_com4():
 
     ports = serial.tools.list_ports.comports()
     for port in ports:
-        print(f"Port: {port.device}, Description: {port.device}")
+        print(f"Port: {port.device}, Description: {port.description}")
         if port.description == "USB Serial Device (" + port.device + ")":
             try:
                 ser = serial.Serial(port.device, baudrate=115200, timeout=1)
-                print("connected to " + port.device)
+                print("Connected to " + port.device)
             except serial.serialutil.SerialException:
                 print("Could not connect to " + port.device)
                 continue
@@ -127,7 +127,6 @@ def connect_to_com4():
             else:
                 ser.close()
 
-    
     messagebox.showinfo("Connection Status", BSU_connected + "\n" + mmW_connected)
 
 
@@ -144,6 +143,9 @@ bottom_frame.pack(side=tk.TOP, pady=10)
 
 button_frame = tk.Frame(root)
 button_frame.pack(padx=10, pady=10)
+
+checkbox_frame = tk.Frame(root)
+checkbox_frame.pack(padx=10, pady=10)
 
 history_frame = tk.Frame(root)
 history_frame.pack(side=tk.BOTTOM, padx=10, pady=10)
@@ -166,7 +168,7 @@ history_label = tk.Label(history_frame, text="History:")
 history_label.pack()
 
 history_text = tk.Text(history_frame, height=4, width=10, font=('Arial', 16))
-history_text.pack()
+history_text.pack(side=tk.BOTTOM)
 
 # Create the scatter plots
 fig = Figure(figsize=(5, 5), dpi=100)
@@ -181,6 +183,10 @@ reset_button.pack(side=tk.TOP, padx=1, pady=10)
 
 connect_button = tk.Button(bottom_frame, text="CONNECT", font=('Arial', 16), command=connect_to_com4)
 connect_button.pack(side=tk.TOP, padx=1, pady=10)
+
+flag_state = tk.BooleanVar()
+checkbox = tk.Checkbutton(checkbox_frame, text="Collect Data", variable=flag_state)
+checkbox.pack(side=tk.BOTTOM, padx=1, pady=10)
 
 # Add the plots to the GUI
 canvas = FigureCanvasTkAgg(fig, master=plot_frame)
