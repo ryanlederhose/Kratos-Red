@@ -12,12 +12,68 @@ current_button = None
 
 button_queue = queue.Queue()
 
-def mmw(ser, ser2):
+def mmw(cliPort, dataPort):
+
+    MAX_NUM_OBJS = 10
+    MAX_NUM_FRAMES = 80
+    
+    frameNumber = 0
+    totalBytesParsed = 0
+    seq = []
+    data = []
+    x = np.zeros(MAX_NUM_FRAMES)
+    y = np.zeros(MAX_NUM_FRAMES)
+    v = np.zeros(MAX_NUM_FRAMES)
+
+    configureRadar(cliPort, "radar_config.cfg")
+
+    line =  dataPort.readline()
+    data = line
+
     while True:
-        ser.write(b"\n")
-        print(ser.readline().decode('utf-8'))
-        print(ser.readline().decode('utf-8'))
-        print(ser.readline().decode('utf-8'))
+        line = dataPort.readline()
+        data += line
+        
+        parser_result, \
+        headerStartIndex,  \
+        totalPacketNumBytes, \
+        numDetObj,  \
+        numTlv,  \
+        subFrameNumber,  \
+        detectedX_array,  \
+        detectedY_array,  \
+        detectedZ_array,  \
+        detectedV_array,  \
+        detectedRange_array,  \
+        detectedAzimuth_array,  \
+        detectedElevation_array,  \
+        detectedSNR_array,  \
+        detectedNoise_array = parser_one_mmw_demo_output_packet(data[totalBytesParsed::1], \
+                                                                len(data)-totalBytesParsed, \
+                                                                enablePrint=False, \
+                                                                errorPrint=False)
+
+        if (parser_result == 0):
+            totalBytesParsed += (headerStartIndex+totalPacketNumBytes) 
+
+            print("---------------- frame" + str(frameNumber) + "----------------")
+            frame = []
+            o = 0
+            while o < numDetObj:
+                obj = np.array([detectedX_array[o], 
+                                detectedY_array[o],
+                                detectedV_array[o]
+                                ])
+                frame.append(obj)
+                o += 1
+                # print(o, obj)
+
+            # while o < MAX_NUM_OBJS:
+            #     frame.append([[0.] * 5])
+            #     o += 1
+
+            print(frame)
+            frameNumber += 1
 
 def bsu(ser):
     button_queue.queue.clear()
