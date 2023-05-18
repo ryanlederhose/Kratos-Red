@@ -5,7 +5,8 @@ import numpy as np
 from tkinter import messagebox
 import serial
 import serial.tools.list_ports
-import threading, queue
+import threading, queue, pyautogui
+from mmWaveProcessing import *
 
 history = []
 current_button = None
@@ -25,7 +26,7 @@ def mmw(cliPort, dataPort):
     y = np.zeros(MAX_NUM_FRAMES)
     v = np.zeros(MAX_NUM_FRAMES)
 
-    configureRadar(cliPort, "radar_config.cfg")
+    configureRadar(cliPort, "./radar_config.cfg")
 
     line =  dataPort.readline()
     data = line
@@ -126,6 +127,27 @@ def bsu(ser):
         print(ser.readline().decode('utf-8'))
         print(ser.readline().decode('utf-8'))
 
+def handle_hid(direction):
+    current_x, current_y = pyautogui.position()
+    distance = 500
+
+    if direction == 1: #UP
+        new_x = current_x
+        new_y = current_y - distance
+    elif direction == 2: #DOWN
+        new_x = current_x
+        new_y = current_y + distance
+    elif direction == 0: #LEFT
+        new_x = current_x - distance
+        new_y = current_y
+    elif direction == 3: #RIGHT
+        new_x = current_x + distance
+        new_y = current_y
+    else:
+        return
+
+
+    pyautogui.moveTo(new_x, new_y)
 
 def button_clicked(idx):
     global current_button
@@ -142,6 +164,8 @@ def button_clicked(idx):
         history = history[-4:]
     
     update_history_text()
+
+    handle_hid(idx)
 
     # Enqueue the button index
     button_queue.put(idx)
@@ -271,4 +295,3 @@ canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
 
 root.mainloop()
-
