@@ -67,12 +67,17 @@
 #define GESTURE_CMD 1
 #define RESET_CMD 2
 #define CLEAR_CMD 3
+#define START_UP_CMD 4
 
 //Types of gestures
 #define GESTURE_RIGHT 1
 #define GESTURE_LEFT 2
 #define GESTURE_UP 3
 #define GESTURE_DOWN 4
+#define GESTURE_MOVE_RIGHT 5
+#define GESTURE_MOVE_LEFT 6
+#define GESTURE_MOVE_UP 7
+#define GESTURE_MOVE_DOWN 8
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
