@@ -48,6 +48,9 @@ class LEDMatrix(object):
         self.matrix = RGBMatrix()
         self.board = [[(0, 0, 0) for i in range(32)] for i in range(32)]    #represents led matrix
         self.offset_canvas = self.matrix.CreateFrameCanvas()
+
+        self.size = 16
+
     
     '''
     Initialise the start up sequence for the LED matrix
@@ -80,10 +83,75 @@ class LEDMatrix(object):
         self.clear_board()  # Clear the board
 
         # Draw the square on the matrix
-        self.fill_rectangle(8, 8, 16, 16, 255, 0, 0)
-        self.fill_rectangle(8, 16, 16, 24, 255, 255, 0)
-        self.fill_rectangle(16, 8, 24, 16, 0, 255, 0)
-        self.fill_rectangle(16, 16, 24, 24, 0, 255, 255)
+        self.build_square(0)
+        self.size = 16
+
+    '''
+    Build the square on the led matrix and increment by a certain amount
+    Parameters
+        increment - how much to enlarge/contact the square
+    '''
+    def build_square(self, increment):
+        self.clear_board()
+        self.fill_rectangle(8 - increment, 8 - increment, 16, 16, 255, 0, 0)
+        self.fill_rectangle(8 - increment, 16, 16, 24 + increment, 255, 255, 0)
+        self.fill_rectangle(16, 8 - increment, 24 + increment, 16, 0, 255, 0)
+        self.fill_rectangle(16, 16, 24 + increment, 24 + increment, 0, 255, 255)
+    
+    '''
+    Increase the size of the square on the led matrix
+    '''
+    def adjust_square_size(self):
+        if self.size == 32:
+            return
+        
+        boardCopy = copy.deepcopy(self.board)
+        rgb = (0, 0, 0)
+        rgbPrev = rgb
+
+        for i in range(0, 32):
+            for j in range(0, 32):
+                rgb = boardCopy[i][j]
+                if rgb != (0, 0, 0) and rgbPrev == (0, 0, 0):
+
+                    colour1 = rgb
+                    for z in range(j - 2, j + int(self.size / 2)):
+                        self.board[i - 1][z] = colour1
+                        self.board[i - 2][z] =  colour1
+                    for z in range(i, i + int(self.size / 2)):
+                        self.board[z][j - 1] = colour1
+                        self.board[z][j - 2] = colour1
+                    
+                    colour2 = boardCopy[i + self.size - 1][j]
+                    for z in range(j - 2, j + int(self.size / 2)):
+                        self.board[i + self.size][z] = colour2
+                        self.board[i + self.size + 1][z] = colour2
+                    for z in range(i + int(self.size / 2), i + self.size):
+                        self.board[z][j - 1] = colour2
+                        self.board[z][j - 2] = colour2
+
+                    colour3 = boardCopy[i][j + self.size - 1]
+                    for z in range(j + int(self.size / 2), j + self.size + 2):
+                        self.board[i - 1][z] = colour3
+                        self.board[i - 2][z] = colour3
+                    for z in range(i, i + int(self.size / 2)):
+                        self.board[z][j + self.size] = colour3
+                        self.board[z][j + self.size + 1] = colour3
+
+                    colour4 = boardCopy[i + self.size - 1][j + self.size - 1]
+                    for z in range(j + int(self.size / 2), j + self.size + 2):
+                        self.board[i + self.size][z] = colour4
+                        self.board[i + self.size + 1][z] = colour4
+                    for z in range(i + int(self.size / 2), i + self.size):
+                        self.board[z][j + self.size] = colour4
+                        self.board[z][j + self.size + 1] = colour4
+
+                    self.update_matrix()
+                    self.size += 2
+                    return
+                rgbPrev = rgb
+
+
 
     '''
     Fill the LED matrix with a specified RGB value
@@ -341,6 +409,8 @@ Main loop - control the program flow
 '''
 def main():
 
+    btConnection = False    # Variable for ble connection
+
     # Create class objects
     serial_communication = SerialCommunication()
     led_matrix = LEDMatrix()
@@ -357,7 +427,8 @@ def main():
         # Apply the right movements on the LED board
         if data[COMMAND] == GESTURE:
             if data[DATA] == RIGHT_SWIPE:
-                led_matrix.rotate_array_by_angle(90, 10)
+                # led_matrix.rotate_array_by_angle(90, 10)
+                led_matrix.adjust_square_size()
             elif data[DATA] == LEFT_SWIPE:
                 led_matrix.rotate_array_by_angle(-90, 10)
             elif data[DATA] == UP_SWIPE:
@@ -376,8 +447,11 @@ def main():
             led_matrix.start_up_sequence(text=False)
         elif data[COMMAND] == CLEAR:
             led_matrix.clear_board()
+            btConnection = False
         elif data[COMMAND] == START_UP:
-            led_matrix.start_up_sequence(text=True)
+            if btConnection == False:
+                led_matrix.start_up_sequence(text=True)
+                btConnection = True
 
 '''
 Apply a rotation matrix to a x, y coordinate
