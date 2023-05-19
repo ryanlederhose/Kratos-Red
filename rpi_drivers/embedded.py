@@ -99,61 +99,6 @@ class LEDMatrix(object):
         self.fill_rectangle(16, 16, 24 + increment, 24 + increment, 0, 255, 255)
     
     '''
-    Increase the size of the square on the led matrix
-    '''
-    def adjust_square_size(self):
-        if self.size == 32:
-            return
-        
-        boardCopy = copy.deepcopy(self.board)
-        rgb = (0, 0, 0)
-        rgbPrev = rgb
-
-        for i in range(0, 32):
-            for j in range(0, 32):
-                rgb = boardCopy[i][j]
-                if rgb != (0, 0, 0) and rgbPrev == (0, 0, 0):
-
-                    colour1 = rgb
-                    for z in range(j - 2, j + int(self.size / 2)):
-                        self.board[i - 1][z] = colour1
-                        self.board[i - 2][z] =  colour1
-                    for z in range(i, i + int(self.size / 2)):
-                        self.board[z][j - 1] = colour1
-                        self.board[z][j - 2] = colour1
-                    
-                    colour2 = boardCopy[i + self.size - 1][j]
-                    for z in range(j - 2, j + int(self.size / 2)):
-                        self.board[i + self.size][z] = colour2
-                        self.board[i + self.size + 1][z] = colour2
-                    for z in range(i + int(self.size / 2), i + self.size):
-                        self.board[z][j - 1] = colour2
-                        self.board[z][j - 2] = colour2
-
-                    colour3 = boardCopy[i][j + self.size - 1]
-                    for z in range(j + int(self.size / 2), j + self.size + 2):
-                        self.board[i - 1][z] = colour3
-                        self.board[i - 2][z] = colour3
-                    for z in range(i, i + int(self.size / 2)):
-                        self.board[z][j + self.size] = colour3
-                        self.board[z][j + self.size + 1] = colour3
-
-                    colour4 = boardCopy[i + self.size - 1][j + self.size - 1]
-                    for z in range(j + int(self.size / 2), j + self.size + 2):
-                        self.board[i + self.size][z] = colour4
-                        self.board[i + self.size + 1][z] = colour4
-                    for z in range(i + int(self.size / 2), i + self.size):
-                        self.board[z][j + self.size] = colour4
-                        self.board[z][j + self.size + 1] = colour4
-
-                    self.update_matrix()
-                    self.size += 2
-                    return
-                rgbPrev = rgb
-
-
-
-    '''
     Fill the LED matrix with a specified RGB value
     Parameters
         r, g, b (int) - RGB values
