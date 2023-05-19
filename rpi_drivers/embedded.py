@@ -427,8 +427,7 @@ def main():
         # Apply the right movements on the LED board
         if data[COMMAND] == GESTURE:
             if data[DATA] == RIGHT_SWIPE:
-                # led_matrix.rotate_array_by_angle(90, 10)
-                led_matrix.adjust_square_size()
+                led_matrix.rotate_array_by_angle(90, 10)
             elif data[DATA] == LEFT_SWIPE:
                 led_matrix.rotate_array_by_angle(-90, 10)
             elif data[DATA] == UP_SWIPE:
