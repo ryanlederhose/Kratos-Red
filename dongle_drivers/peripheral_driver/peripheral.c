@@ -32,6 +32,28 @@ static void json_process(hciPacket_t pack) {
     printk("  <Data>: %d\r\n", pack.data);
     printk("}\r\n");
 }
+
+/**
+ * @brief check if there is an existing bluetooth connection
+ * @param shell shell struct
+ * @param argc size of argv
+ * @param argv argument array
+*/
+static void cmd_connect(const struct shell *shell, size_t argc, char **argv) {
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	hciPacket_t pack;
+
+	if (chrcFlag == 0x01) {
+		pack.preamble = 0xAA;
+		pack.command = START_UP_CMD;
+		pack.data = 0x00;
+		json_process(pack);
+	}
+
+}
+
 /**
  * @brief start sending BLE advertising packets
  */
@@ -96,7 +118,7 @@ static uint8_t gatt_discover_cb(struct bt_conn *conn, const struct bt_gatt_attr 
 			// Send start command to rpi
 			hciPacket_t pack;
 			pack.preamble = 0xAA;
-			pack.command = RESET_CMD;
+			pack.command = START_UP_CMD;
 			pack.data = 0x00;
 			k_msgq_put(&command_msgq, &pack, K_NO_WAIT);
         }
@@ -276,6 +298,8 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
  * @brief initialise the shell along with the necessary commands for the Base Station Unit (BSU)
  */
 void dongle_shell_init() {
+	//Create and initialise the 'reset' commands
+    SHELL_CMD_REGISTER(connect, NULL, NULL, cmd_connect);
 }
 
 /**
@@ -313,7 +337,6 @@ void dongle_shell_thread(void) {
         if (k_msgq_get(&command_msgq, &txPacket, K_MSEC(10)) == 0) {
             json_process(txPacket);
         }
-
         k_msleep(5);
     }
 }
