@@ -14,7 +14,10 @@ current_button = None
 button_queue = queue.Queue()
 
 def mmw(cliPort, dataPort):
+    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
 
+    configFileName = repoPath + "AWR1843config.cfg"
+    
     MAX_NUM_OBJS = 10
     MAX_NUM_FRAMES = 80
     
@@ -26,45 +29,40 @@ def mmw(cliPort, dataPort):
     y = np.zeros(MAX_NUM_FRAMES)
     v = np.zeros(MAX_NUM_FRAMES)
 
-    configureRadar(cliPort, "./radar_config.cfg")
+    serialConfig(cliPort, configFileName)
 
-    line =  dataPort.readline()
-    data = line
+    configParameters = parseConfigFile(configFileName)
+
+    t = 0
 
     while True:
-        line = dataPort.readline()
-        data += line
         
-        parser_result, \
-        headerStartIndex,  \
-        totalPacketNumBytes, \
-        numDetObj,  \
-        numTlv,  \
-        subFrameNumber,  \
-        detectedX_array,  \
-        detectedY_array,  \
-        detectedZ_array,  \
-        detectedV_array,  \
-        detectedRange_array,  \
-        detectedAzimuth_array,  \
-        detectedElevation_array,  \
-        detectedSNR_array,  \
-        detectedNoise_array = parser_one_mmw_demo_output_packet(data[totalBytesParsed::1], \
-                                                                len(data)-totalBytesParsed, \
-                                                                enablePrint=False, \
-                                                                errorPrint=False)
+        dataOk, \
+        frameNumber, \
+        detObj = readAndParseData18xx(dataPort, 
+                                      configParameters)
 
-        if (parser_result == 0):
-            totalBytesParsed += (headerStartIndex+totalPacketNumBytes) 
+        t+= 1
 
-            print("---------------- frame" + str(frameNumber) + "----------------")
+        if (dataOk):
+            if (t % 100 == 0):
+                print(detObj)
+
+            # print("data ok")
+            # print(detObj)
             frame = []
             o = 0
-            while o < numDetObj:
-                obj = np.array([detectedX_array[o], 
-                                detectedY_array[o],
-                                detectedV_array[o]
-                                ])
+
+            if not ("numObj" in detObj.keys()):
+                continue
+
+            # print(detObj)
+
+            while o < detObj["numObj"]:
+                obj = np.array([frameNumber, detObj["x"][o], 
+                                detObj["y"][o],
+                                detObj["velocity"][o]])
+                
                 frame.append(obj)
                 o += 1
                 # print(o, obj)
@@ -73,8 +71,12 @@ def mmw(cliPort, dataPort):
             #     frame.append([[0.] * 5])
             #     o += 1
 
-            print(frame)
+            print(detObj["velocity"])
+
+            # seq.append(frame)
+            
             frameNumber += 1
+
 
 def bsu(ser):
     button_queue.queue.clear()
