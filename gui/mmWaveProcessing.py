@@ -231,10 +231,6 @@ def readAndParseData18xx(Dataport, configParameters):
 
 
 
-# x = np.zeros(NUM_FRAMES)
-# y = np.zeros(NUM_FRAMES)
-# v = np.zeros(NUM_FRAMES)
-
 
 def mmw(cliPort, dataPort):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
