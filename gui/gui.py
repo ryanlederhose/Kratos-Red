@@ -155,6 +155,8 @@ def connect_to_com4():
                 mmW_data_connected = "Connected to mmW Data on " + ports[port_number - 1].device
                 mmw_thread = threading.Thread(target=mmw, args=(ser,ser2))
                 mmw_thread.start()
+                scatter_thread = threading.Thread(target=plot_scatter, args=(ax1))
+                scatter_thread.start()
                 
             else:
                 ser.close()
