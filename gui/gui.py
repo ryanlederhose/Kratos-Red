@@ -132,48 +132,102 @@ def connect_to_com4():
     # Connection to BSU and mmW
     global BSU_connected, mmW_cli_connected, mmW_data_connected
 
-    ports = serial.tools.list_ports.comports()
-    port_number = 0
-    for port in ports:
-        print(f"Port: {port.device}, Description: {port.description}")
-        if port.description == "XDS110 (02.03.00.05) Embed with CMSIS-DAP":
-            try:
-                ser = serial.Serial(port.device, baudrate=115200, timeout=1)
-                print("Connected to " + port.device)
-            except serial.serialutil.SerialException:
-                print("Could not connect to " + port.device)
-                continue
-            ser.write(b"\n")
-            while True:
-                try:
-                    a = ser.readline().decode('utf-8')
-                    a = ser.readline().decode('utf-8')
-                    break
-                except UnicodeDecodeError:
-                    print("UTF Error")
-            if a == '\x1b[1;32mBSU_SHELL:~$ \x1b[m':
-                print("Starting BSU Thread")
-                bsu_thread = threading.Thread(target=bsu, args=(ser,))
-                bsu_thread.start()
-                BSU_connected = "Connected to BSU on " + port.device
-            elif a == 'mmwDemo:/>':
-                print("Starting mmW Thread")
-                mmW_cli_connected = "Connected to mmW CLI on " + port.device
-                ser2 = serial.Serial(ports[port_number - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
-                mmW_data_connected = "Connected to mmW Data on " + ports[port_number - 1].device
-                mmw_thread = threading.Thread(target=mmw, args=(ser,ser2))
-                mmw_thread.start()
-                scatter_thread = threading.Thread(target=plot_scatter, args=(ax1))
-                scatter_thread.start()
-                
-            else:
-                ser.close()
+    donglePort = "COM8"
+    cliPort = "COM7"
 
-            port_number += 1
+    ports = serial.tools.list_ports.comports()
+
+    portNum = 0
+    for port in ports:
+        if port.device == cliPort:
+            break
+        portNum += 1
+
+    try:
+        dongle = serial.Serial(donglePort, baudrate=115200, timeout=1)
+        dongle.write(b"\n")
+        prompt1 = dongle.readline().decode('utf-8')
+        prompt2 = dongle.readline().decode('utf-8')
+
+        if prompt2 == '\x1b[1;32mnRF-Central:~$ \x1b[m':
+            print("Starting BSU Thread")
+            bsu_thread = threading.Thread(target=bsu, args=(dongle,))
+            bsu_thread.start()
+            BSU_connected = "Connected to BSU on " + donglePort
+        else:
+            dongle.close()
+            raise serial.serialutil.SerialException
+    
+    except serial.serialutil.SerialException:
+        print("Could not connect to " + donglePort)
+
+    try:
+        cli = serial.Serial(cliPort, baudrate=115200, timeout=1)
+        cli.write(b"\n")
+        prompt3 = cli.readline().decode('utf-8')
+        prompt4 = cli.readline().decode('utf-8')
+
+        if prompt4 == 'mmwDemo:/>':
+            print("Starting mmW Thread")
+            mmW_cli_connected = "Connected to mmW CLI on " + port.device
+            data = serial.Serial(ports[portNum - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
+            mmW_data_connected = "Connected to mmW Data on " + ports[portNum - 1].device
+            mmw_thread = threading.Thread(target=mmw, args=(cli,data))
+            mmw_thread.start()
+            scatter_thread = threading.Thread(target=plot_scatter, args=(ax1))
+            scatter_thread.start()
+        
+        else:
+            cli.close()
+            raise serial.serialutil.SerialException
+
+    except serial.serialutil.SerialException:
+        print("Could not connect to " + cliPort)
+
+
+    # ports = serial.tools.list_ports.comports()
+    # port_number = 0
+    # for port in ports:
+    #     print(f"Port: {port.device}, Description: {port.description}")
+    #     if port.description == "XDS110 (02.03.00.05) Embed with CMSIS-DAP":
+    #         try:
+    #             ser = serial.Serial(port.device, baudrate=115200, timeout=1)
+    #             print("Connected to " + port.device)
+    #         except serial.serialutil.SerialException:
+    #             print("Could not connect to " + port.device)
+    #             continue
+    #         ser.write(b"\n")
+    #         try:
+    #             a = ser.readline().decode('utf-8')
+    #             a = ser.readline().decode('utf-8')
+    #             break
+    #         except UnicodeDecodeError:
+    #             ser.close()
+    #         if a == '\x1b[1;32mBSU_SHELL:~$ \x1b[m':
+    #             print("Starting BSU Thread")
+    #             bsu_thread = threading.Thread(target=bsu, args=(ser,))
+    #             bsu_thread.start()
+    #             BSU_connected = "Connected to BSU on " + port.device
+    #         elif a == 'mmwDemo:/>':
+    #             print("Starting mmW Thread")
+    #             mmW_cli_connected = "Connected to mmW CLI on " + port.device
+    #             ser2 = serial.Serial(ports[port_number - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
+    #             mmW_data_connected = "Connected to mmW Data on " + ports[port_number - 1].device
+    #             mmw_thread = threading.Thread(target=mmw, args=(ser,ser2))
+    #             mmw_thread.start()
+    #             scatter_thread = threading.Thread(target=plot_scatter, args=(ax1))
+    #             scatter_thread.start()
+                
+    #         else:
+    #             ser.close()
+
+    #         port_number += 1
         
 
     messagebox.showinfo("Connection Status", BSU_connected + "\n" + 
             mmW_cli_connected + "\n" + mmW_data_connected)
+
+
 
 
 
