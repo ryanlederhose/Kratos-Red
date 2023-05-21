@@ -113,7 +113,7 @@ def update_history_text():
         history_text.insert(1.0, item + "\n")
 
 def plot_scatter():
-    global ax1, canvas
+    global ax1, canvas, ax2
     while True:
         detObj = queueXY.get()
 
@@ -121,12 +121,21 @@ def plot_scatter():
         # Generate random points for the scatter plot
         x = -detObj["x"]
         y = detObj["y"]
+        v = detObj["velocity"]
         print("x:", x)
         print("y:", y)
+        print("V:", velocity)
 
+        # 2D plot update
         ax1.cla()
         ax1.set(xlim=(-0.5, 0.5), ylim=(0, 1.5))
         ax1.scatter(x, y, c='blue')
+        
+        # 3D Plot Update
+        ax2.cla()
+        ax2.set(xlim=(-0.5, 0.5), ylim=(0, 1.5), zlim=(-1, 1))
+        ax2.scatter(x, y, v, c='blue')
+        
         canvas.draw()
         # ax1.show()
     
