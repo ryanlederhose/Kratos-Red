@@ -1,5 +1,6 @@
 import serial
 import numpy as np
+import torch
 import time
 import os
 
@@ -208,11 +209,8 @@ def readAndParseData18xx(Dataport, configParameters):
                 
                 # Store the data in the detObj dictionary
                 detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
-                # print(detObj)
+                
                 dataOK = 1
-                # if (t % 30 == 0):
-                #     print(detObj)
-                # t+=1
  
         # Remove already processed data
         if idX > 0 and byteBufferLength>idX:
@@ -229,3 +227,102 @@ def readAndParseData18xx(Dataport, configParameters):
 
     return dataOK, frameNumber, detObj
 
+
+
+
+# x = np.zeros(NUM_FRAMES)
+# y = np.zeros(NUM_FRAMES)
+# v = np.zeros(NUM_FRAMES)
+
+
+def mmw(cliPort, dataPort):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
+
+    configFileName = repoPath + "AWR1843config.cfg"
+    
+    MAX_NUM_OBJS = 10
+    NUM_FRAMES=80
+    frameNumber = 0
+    
+    numMovingPoints = 0
+    numPoints = 0
+
+    startSeq = False
+
+    serialConfig(cliPort, configFileName)
+
+    configParameters = parseConfigFile(configFileName)
+
+    t = 0
+
+    while True:
+        
+        dataOk, \
+        _, \
+        detObj = readAndParseData18xx(dataPort, 
+                                      configParameters)
+
+        t += 1
+        timeLen = 0
+
+        if (dataOk):
+            frame = []
+            o = 0
+
+            if not ("numObj" in detObj.keys()):
+                continue
+
+            # print(detObj)
+
+            # while o < detObj["numObj"]:
+            #     obj = np.array([frameNumber, detObj["x"][o], 
+            #                     detObj["y"][o],
+            #                     detObj["velocity"][o]])
+                
+            #     frame.append(obj)
+            #     o += 1
+                # print(o, obj)
+
+            # while o < MAX_NUM_OBJS:
+            #     frame.append([[0.] * 5])
+            #     o += 1
+
+            n = np.linalg.norm(detObj["velocity"])
+            
+            if (n > 0.1 or startSeq):
+
+                if (not startSeq):
+                    t = 0
+                    timeLen = round(time.time(), 4)
+
+                if (n > 0.1):
+                    print(str(frameNumber) + ": ", detObj["velocity"], "  norm = ", n)
+
+                numPoints += detObj["numObj"]
+
+                for obj in detObj["velocity"]:
+                    if obj != 0:
+                        numMovingPoints += 1
+
+                startSeq = True
+
+                
+
+                frameNumber += 1
+
+            #### ALSO ADD CONDITION TO KEEP WITHIN A CERTAIN TIME
+            if (frameNumber >= NUM_FRAMES):
+                print("-------------------------")
+                print("Moving points:", numMovingPoints)
+                print("Total points:", numPoints)
+                print("i =", t)
+                # print("time =", round(time.time(), 4) - timeLen)
+                print("-------------------------")
+                startSeq = False
+                frameNumber = 0
+                numPoints = 0
+                numMovingPoints = 0
+                t = 0
+
+           
