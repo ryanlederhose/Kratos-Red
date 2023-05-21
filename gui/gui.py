@@ -112,17 +112,23 @@ def update_history_text():
     for item in history:
         history_text.insert(1.0, item + "\n")
 
-def plot_scatter(ax):
+def plot_scatter():
+    global ax1, canvas
     while True:
-        print("here")
         detObj = queueXY.get()
 
-        print(detObj)
+        # print(detObj)
         # Generate random points for the scatter plot
         x = -detObj["x"]
         y = detObj["y"]
-    
-        ax.scatter(x, y, c='blue')
+        print("x:", x)
+        print("y:", y)
+
+        ax1.cla()
+        ax1.set(xlim=(-0.5, 0.5), ylim=(0, 1.5))
+        ax1.scatter(x, y, c='blue')
+        canvas.draw()
+        # ax1.show()
     
 BSU_connected = "Failed to connect to BSU"
 mmW_cli_connected = "Failed to connect to mmW CLI"
@@ -132,8 +138,8 @@ def connect_to_com4():
     # Connection to BSU and mmW
     global BSU_connected, mmW_cli_connected, mmW_data_connected
 
-    donglePort = "COM8"
-    cliPort = "COM7"
+    donglePort = "/dev/ttyACM2"
+    cliPort = "/dev/ttyACM0"
 
     ports = serial.tools.list_ports.comports()
 
@@ -174,7 +180,7 @@ def connect_to_com4():
             mmW_data_connected = "Connected to mmW Data on " + ports[portNum - 1].device
             mmw_thread = threading.Thread(target=mmw, args=(cli,data))
             mmw_thread.start()
-            scatter_thread = threading.Thread(target=plot_scatter, args=(ax1))
+            scatter_thread = threading.Thread(target=plot_scatter)
             scatter_thread.start()
         
         else:
@@ -226,8 +232,6 @@ def connect_to_com4():
 
     messagebox.showinfo("Connection Status", BSU_connected + "\n" + 
             mmW_cli_connected + "\n" + mmW_data_connected)
-
-
 
 
 
