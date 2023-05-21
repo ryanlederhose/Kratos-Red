@@ -3,13 +3,14 @@ import numpy as np
 import torch
 import time
 import os
-
+import queue
 
 byteBuffer = np.zeros(2**15, dtype='uint8')
 byteBufferLength = 0
 
 # ------------------------------------------------------------------
 
+queueXY = queue.Queue(maxsize=5)
 
 # Function to configure the serial ports and send 
 # the data from the configuration file to the radar.
@@ -270,6 +271,11 @@ def mmw(cliPort, dataPort):
             frame = []
             o = 0
 
+            queueXY.put(detObj)
+
+            d = queueXY.get()
+            print(d)
+
             if not ("numObj" in detObj.keys()):
                 continue
 
@@ -296,8 +302,8 @@ def mmw(cliPort, dataPort):
                     t = 0
                     timeLen = round(time.time(), 4)
 
-                if (n > 0.1):
-                    print(str(frameNumber) + ": ", detObj["velocity"], "  norm = ", n)
+                # if (n > 0.1):
+                #     print(str(frameNumber) + ": ", detObj["velocity"], "  norm = ", n)
 
                 numPoints += detObj["numObj"]
 
@@ -307,18 +313,17 @@ def mmw(cliPort, dataPort):
 
                 startSeq = True
 
-                
 
                 frameNumber += 1
 
             #### ALSO ADD CONDITION TO KEEP WITHIN A CERTAIN TIME
             if (frameNumber >= NUM_FRAMES):
-                print("-------------------------")
-                print("Moving points:", numMovingPoints)
-                print("Total points:", numPoints)
-                print("i =", t)
-                # print("time =", round(time.time(), 4) - timeLen)
-                print("-------------------------")
+                # print("-------------------------")
+                # print("Moving points:", numMovingPoints)
+                # print("Total points:", numPoints)
+                # print("i =", t)
+                # # print("time =", round(time.time(), 4) - timeLen)
+                # print("-------------------------")
                 startSeq = False
                 frameNumber = 0
                 numPoints = 0
