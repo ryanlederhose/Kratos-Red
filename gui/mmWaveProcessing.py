@@ -232,7 +232,7 @@ def readAndParseData18xx(Dataport, configParameters):
 
 
 
-def mmw(cliPort, dataPort):
+def mmw(cliPort, dataPort, sem):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
 
@@ -254,6 +254,12 @@ def mmw(cliPort, dataPort):
     t = 0
 
     while True:
+        sem.acquire()
+
+        # Check if the semaphore value is -1
+        if sem._value == -1:
+            print("mmWave Thread killed")
+            break
         
         dataOk, \
         _, \
@@ -322,5 +328,7 @@ def mmw(cliPort, dataPort):
                 numPoints = 0
                 numMovingPoints = 0
                 t = 0
+
+            sem.release()
 
            
