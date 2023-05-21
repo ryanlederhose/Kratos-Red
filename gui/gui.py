@@ -144,8 +144,13 @@ def connect_to_com4():
                 print("Could not connect to " + port.device)
                 continue
             ser.write(b"\n")
-            a = ser.readline().decode('utf-8')
-            a = ser.readline().decode('utf-8')
+            while True:
+                try:
+                    a = ser.readline().decode('utf-8')
+                    a = ser.readline().decode('utf-8')
+                    break
+                except UnicodeDecodeError:
+                    print("UTF Error")
             if a == '\x1b[1;32mBSU_SHELL:~$ \x1b[m':
                 print("Starting BSU Thread")
                 bsu_thread = threading.Thread(target=bsu, args=(ser,))
