@@ -11,6 +11,7 @@ byteBufferLength = 0
 # ------------------------------------------------------------------
 
 queueXY = queue.Queue(maxsize=5)
+queueLogs = queue.Queue(maxsize=1)
 
 # Function to configure the serial ports and send 
 # the data from the configuration file to the radar.
@@ -229,10 +230,17 @@ def readAndParseData18xx(Dataport, configParameters):
     return dataOK, frameNumber, detObj
 
 
+x = np.zeros(80)
+y = np.zeros(80)
+v = np.zeros(80)
 
+OFFSET = 20
+
+frNum = 0
 
 
 def mmw(cliPort, dataPort, sem):
+    global frNum
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
 
@@ -255,7 +263,7 @@ def mmw(cliPort, dataPort, sem):
 
     while True:
         sem.acquire()
-
+        # print("here3")
         # Check if the semaphore value is -1
         if sem._value == -1:
             print("mmWave Thread killed")
@@ -270,13 +278,19 @@ def mmw(cliPort, dataPort, sem):
         timeLen = 0
 
         if (dataOk):
-            frame = []
-            o = 0
+            frNum += 1
 
-            queueXY.put(detObj)
-
-            if not ("numObj" in detObj.keys()):
+            if not ("numObj" in detObj.keys()): # This probably never happens
                 continue
+
+            if not queueXY.full(): 
+                queueXY.put(detObj)
+
+            if not queueLogs.full(): 
+                detObj["frNum"] = frNum
+                queueLogs.put(detObj)
+
+
 
             # print(detObj)
 
@@ -292,7 +306,7 @@ def mmw(cliPort, dataPort, sem):
             # while o < MAX_NUM_OBJS:
             #     frame.append([[0.] * 5])
             #     o += 1
-
+            
             n = np.linalg.norm(detObj["velocity"])
             
             if (n > 0.1 or startSeq):
@@ -306,9 +320,7 @@ def mmw(cliPort, dataPort, sem):
 
                 numPoints += detObj["numObj"]
 
-                for obj in detObj["velocity"]:
-                    if obj != 0:
-                        numMovingPoints += 1
+                
 
                 startSeq = True
 
@@ -329,6 +341,6 @@ def mmw(cliPort, dataPort, sem):
                 numMovingPoints = 0
                 t = 0
 
-            sem.release()
-
+        sem.release()
+        time.sleep(0.01)
            
