@@ -7,6 +7,7 @@ import serial
 import serial.tools.list_ports
 import threading, queue, pyautogui
 from mmWaveProcessing import *
+from datalog import *
 
 history = []
 current_button = None
@@ -235,6 +236,8 @@ def connect_to_com4():
             mmw_thread.start()
             scatter_thread = threading.Thread(target=plot_scatter)
             scatter_thread.start()
+            database_thread = threading.Thread(target=influxSend, args=(queueLogs))
+            database_thread.start()
         
         else:
             cli.close()
