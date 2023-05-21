@@ -13,15 +13,18 @@ current_button = None
 
 button_queue = queue.Queue()
 
-sem = threading.Semaphore(0)
+sem = threading.Semaphore(1)
+sem.release()
 
 def on_closing():
+    print("Here")
     sem.release()
     sem._value = -1
     print("Closing GUI and stopping all Threads")
     root.quit()
 
-def bsu(ser, sem):
+def bsu(ser):
+    global sem
     button_queue.queue.clear()
     ser.write(b"scan f\n")
     print(ser.readline().decode('utf-8'))
@@ -34,14 +37,16 @@ def bsu(ser, sem):
     while True:
 
         sem.acquire()
-
+        # print("here2")
         # Check if the semaphore value is -1
         if sem._value == -1:
             print("BSU Thread killed")
             break
 
+        button_idx = -1
+        
         # Dequeue a button index
-        button_idx = button_queue.get()
+        button_idx = button_queue.get(block=False)
         
         # Process the button index as needed
         # For example, print the index
@@ -75,11 +80,13 @@ def bsu(ser, sem):
         elif button_idx == 6:
             ser.write(b"reset\n")
 
-        print(ser.readline().decode('utf-8'))
-        print(ser.readline().decode('utf-8'))
-        print(ser.readline().decode('utf-8'))
+        if (button_idx != -1):
+            print(ser.readline().decode('utf-8'))
+            print(ser.readline().decode('utf-8'))
+            print(ser.readline().decode('utf-8'))
 
         sem.release()
+        time.sleep(0.1)
 
 def handle_hid(direction):
     current_x, current_y = pyautogui.position()
@@ -129,12 +136,12 @@ def update_history_text():
     for item in history:
         history_text.insert(1.0, item + "\n")
 
-def plot_scatter(sem):
-    global ax1, canvas, ax2
+def plot_scatter():
+    global ax1, canvas, ax2, sem
     while True:
 
         sem.acquire()
-
+        # print("here1")
         # Check if the semaphore value is -1
         if sem._value == -1:
             print("Scatter Plot Thread killed")
@@ -174,6 +181,7 @@ def plot_scatter(sem):
         canvas.draw()
 
         sem.release()
+        time.sleep(0.1)
     
 BSU_connected = "Failed to connect to BSU"
 mmW_cli_connected = "Failed to connect to mmW CLI"
@@ -181,7 +189,7 @@ mmW_data_connected = "Failed to connect to mmW data"
 
 def connect_to_com4():
     # Connection to BSU and mmW
-    global BSU_connected, mmW_cli_connected, mmW_data_connected
+    global BSU_connected, mmW_cli_connected, mmW_data_connected, sem
 
     donglePort = "/dev/ttyACM2"
     cliPort = "/dev/ttyACM0"
@@ -202,7 +210,7 @@ def connect_to_com4():
 
         if prompt2 == '\x1b[1;32mnRF-Central:~$ \x1b[m':
             print("Starting BSU Thread")
-            bsu_thread = threading.Thread(target=bsu, args=(dongle,sem,))
+            bsu_thread = threading.Thread(target=bsu, args=(dongle,))
             bsu_thread.start()
             BSU_connected = "Connected to BSU on " + donglePort
         else:
@@ -223,9 +231,9 @@ def connect_to_com4():
             mmW_cli_connected = "Connected to mmW CLI on " + port.device
             data = serial.Serial(ports[portNum - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
             mmW_data_connected = "Connected to mmW Data on " + ports[portNum - 1].device
-            mmw_thread = threading.Thread(target=mmw, args=(cli,data, sem,))
+            mmw_thread = threading.Thread(target=mmw, args=(cli,data, sem))
             mmw_thread.start()
-            scatter_thread = threading.Thread(target=plot_scatter, args=(sem,))
+            scatter_thread = threading.Thread(target=plot_scatter)
             scatter_thread.start()
         
         else:
