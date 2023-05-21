@@ -269,9 +269,6 @@ def mmw(cliPort, dataPort):
 
             queueXY.put(detObj)
 
-            d = queueXY.get()
-            print(d)
-
             if not ("numObj" in detObj.keys()):
                 continue
 
