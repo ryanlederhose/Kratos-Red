@@ -114,8 +114,11 @@ def update_history_text():
 
 def plot_scatter(ax):
     while True:
+        print("here")
         detObj = queueXY.get()
-    # Generate random points for the scatter plot
+
+        print(detObj)
+        # Generate random points for the scatter plot
         x = -detObj["x"]
         y = detObj["y"]
     
