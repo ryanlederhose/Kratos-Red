@@ -277,7 +277,7 @@ history_text.pack(side=tk.BOTTOM)
 # Create the scatter plots
 fig = Figure(figsize=(10, 5), dpi=100)
 ax1 = fig.add_subplot(121)
-ax2 = fig.add_subplot(122)
+ax2 = fig.add_subplot(122, projection='3d')
 
 ax1.set_xlabel('X position (m)')
 ax1.set_ylabel('Y position (m)')
@@ -286,10 +286,11 @@ ax1.set(xlim=(-0.5, 0.5), ylim=(0, 1.5))
 
 ax2.set_xlabel('X position (m)')
 ax2.set_ylabel('Y position (m)')
-ax2.set_title('3D mmWave Scatter Plot')
+ax2.set_zlabel('Z position (m)')
+ax2.set_title('3D mmWave Plot')
 
-fig.tight_layout()
-fig.subplots_adjust(wspace=0.3)
+fig.tight_layout(pad=2.0)
+fig.subplots_adjust(wspace=0.1)
 
 # plot_scatter(ax1)
 # plot_scatter(ax2)/
