@@ -124,20 +124,29 @@ def plot_scatter():
         v = detObj["velocity"]
         print("x:", x)
         print("y:", y)
-        print("V:", velocity)
+        print("V:", v)
 
         # 2D plot update
         ax1.cla()
         ax1.set(xlim=(-0.5, 0.5), ylim=(0, 1.5))
         ax1.scatter(x, y, c='blue')
         
+        ax1.set_xlabel('X position (m)')
+        ax1.set_ylabel('Y position (m)')
+        ax1.set_title('2D mmWave Scatter Plot')
+      
         # 3D Plot Update
         ax2.cla()
         ax2.set(xlim=(-0.5, 0.5), ylim=(0, 1.5), zlim=(-1, 1))
         ax2.scatter(x, y, v, c='blue')
         
+        ax2.set_xlabel('X position (m)')
+        ax2.set_ylabel('Y position (m)')
+        ax2.set_zlabel('Z position (m)')
+        ax2.set_title('3D mmWave Plot')
+        
+        # Redraw the Scatter Plots
         canvas.draw()
-        # ax1.show()
     
 BSU_connected = "Failed to connect to BSU"
 mmW_cli_connected = "Failed to connect to mmW CLI"
