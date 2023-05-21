@@ -113,14 +113,13 @@ def update_history_text():
         history_text.insert(1.0, item + "\n")
 
 def plot_scatter(ax):
+    while True:
+        detObj = queueXY.get()
     # Generate random points for the scatter plot
-    x = np.random.rand(50)
-    y = np.random.rand(50)
+        x = -detObj["x"]
+        y = detObj["y"]
     
-    ax.scatter(x, y, c='blue')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_title('Scatter Plot')
+        ax.scatter(x, y, c='blue')
     
 BSU_connected = "Failed to connect to BSU"
 mmW_cli_connected = "Failed to connect to mmW CLI"
@@ -208,11 +207,24 @@ history_text = tk.Text(history_frame, height=4, width=10, font=('Arial', 16))
 history_text.pack(side=tk.BOTTOM)
 
 # Create the scatter plots
-fig = Figure(figsize=(5, 5), dpi=100)
-ax1 = fig.add_subplot(211)
-ax2 = fig.add_subplot(212)
-plot_scatter(ax1)
-plot_scatter(ax2)
+fig = Figure(figsize=(10, 5), dpi=100)
+ax1 = fig.add_subplot(121)
+ax2 = fig.add_subplot(122)
+
+ax1.set_xlabel('X position (m)')
+ax1.set_ylabel('Y position (m)')
+ax1.set_title('2D mmWave Scatter Plot')
+ax1.set(xlim=(-0.5, 0.5), ylim=(0, 1.5))
+
+ax2.set_xlabel('X position (m)')
+ax2.set_ylabel('Y position (m)')
+ax2.set_title('3D mmWave Scatter Plot')
+
+fig.tight_layout()
+fig.subplots_adjust(wspace=0.3)
+
+# plot_scatter(ax1)
+# plot_scatter(ax2)/
 
 # Add the LED RESET and CONNECT buttons        
 reset_button = tk.Button(bottom_frame, text="RESET LED", font=('Arial', 16), command=lambda:button_queue.put(6))
