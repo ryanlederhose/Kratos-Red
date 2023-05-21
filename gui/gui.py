@@ -133,7 +133,7 @@ def connect_to_com4():
     port_number = 0
     for port in ports:
         print(f"Port: {port.device}, Description: {port.description}")
-        if port.description == "USB Serial Device (" + port.device + ")":
+        if port.description == "XDS110 (02.03.00.05) Embed with CMSIS-DAP":
             try:
                 ser = serial.Serial(port.device, baudrate=115200, timeout=1)
                 print("Connected to " + port.device)
