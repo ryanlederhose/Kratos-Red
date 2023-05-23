@@ -28,9 +28,9 @@ def influxSend(queueLogs):
                 Point("mmWave_Test")
                 .field("Frame_Number", frameNum)
                 .field("Object_Number", i)
-                .field("Velocity", V[i])
-                .field("X", X[i])
-                .field("Y", Y[i])
+                .field("V", V[i])
+                .field("x", X[i])
+                .field("y", Y[i])
                 )
             
             write_api.write(bucket=bucket, org=org, record=point)
