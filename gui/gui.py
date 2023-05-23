@@ -11,21 +11,22 @@ from datalog import *
 
 history = []
 current_button = None
+FLAG = 0
 
 button_queue = queue.Queue()
 
-sem = threading.Semaphore(1)
-sem.release()
+def get_flag():
+    global FLAG
+    return FLAG
 
 def on_closing():
-    print("Here")
-    sem.release()
-    sem._value = -1
+    global FLAG
     print("Closing GUI and stopping all Threads")
+    FLAG = -1
     root.quit()
 
 def bsu(ser):
-    global sem
+
     button_queue.queue.clear()
     ser.write(b"scan f\n")
     print(ser.readline().decode('utf-8'))
@@ -37,48 +38,52 @@ def bsu(ser):
     print(ser.readline().decode('utf-8'))
     while True:
 
-        sem.acquire()
-        # print("here2")
-        # Check if the semaphore value is -1
-        if sem._value == -1:
-            print("BSU Thread killed")
+        if get_flag() == -1:
+            print("Stopping BSU thread")
             break
 
         button_idx = -1
         
         # Dequeue a button index
-        button_idx = button_queue.get(block=False)
+        if button_queue.empty() == False:
+            button_idx = button_queue.get(block=False)
+            print(f"Button {button_idx} pressed")
         
         # Process the button index as needed
-        # For example, print the index
-        print(f"Button {button_idx} pressed")
-
         # LEFT button
         if button_idx == 0:
-            ser.write(b"gesture 0\n")
+            ser.write(b"gesture 8\n")
 
         # UP button
         elif button_idx == 1:
-            ser.write(b"gesture 1\n")
+            ser.write(b"gesture 5\n")
 
         # DOWN button
         elif button_idx == 2:
-            ser.write(b"gesture 2\n")
+            ser.write(b"gesture 6\n")
 
         # RIGHT button
         elif button_idx == 3:
+            ser.write(b"gesture 7\n")
+
+        # DIAG UP
+        elif button_idx == 4:
             ser.write(b"gesture 3\n")
 
         # CW button
-        elif button_idx == 4:
-            ser.write(b"gesture 4\n")
+        elif button_idx == 5:
+            ser.write(b"gesture 1\n")
 
         # CCW button
-        elif button_idx == 5:
-            ser.write(b"gesture 5\n")
+        elif button_idx == 6:
+            ser.write(b"gesture 2\n")
+
+        # DIAG DOWN 
+        elif button_idx == 7:
+            ser.write(b"gesture 4\n")
 
         # RESET button
-        elif button_idx == 6:
+        elif button_idx == 8:
             ser.write(b"reset\n")
 
         if (button_idx != -1):
@@ -86,8 +91,7 @@ def bsu(ser):
             print(ser.readline().decode('utf-8'))
             print(ser.readline().decode('utf-8'))
 
-        sem.release()
-        time.sleep(0.1)
+        time.sleep(0.5)
 
 def handle_hid(direction):
     current_x, current_y = pyautogui.position()
@@ -107,8 +111,6 @@ def handle_hid(direction):
         new_y = current_y
     else:
         return
-
-
     pyautogui.moveTo(new_x, new_y)
 
 def button_clicked(idx):
@@ -138,14 +140,11 @@ def update_history_text():
         history_text.insert(1.0, item + "\n")
 
 def plot_scatter():
-    global ax1, canvas, ax2, sem
+    global ax1, canvas, ax2
     while True:
-
-        sem.acquire()
-        # print("here1")
-        # Check if the semaphore value is -1
-        if sem._value == -1:
-            print("Scatter Plot Thread killed")
+        
+        if get_flag() == -1:
+            print("Stopping Plot Thread")
             break
 
         detObj = queueXY.get()
@@ -180,8 +179,6 @@ def plot_scatter():
         
         # Redraw the Scatter Plots
         canvas.draw()
-
-        sem.release()
         time.sleep(0.1)
     
 BSU_connected = "Failed to connect to BSU"
@@ -232,7 +229,7 @@ def connect_to_com4():
             mmW_cli_connected = "Connected to mmW CLI on " + port.device
             data = serial.Serial(ports[portNum - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
             mmW_data_connected = "Connected to mmW Data on " + ports[portNum - 1].device
-            mmw_thread = threading.Thread(target=mmw, args=(cli,data, sem))
+            mmw_thread = threading.Thread(target=mmw, args=(cli,data,))
             mmw_thread.start()
             scatter_thread = threading.Thread(target=plot_scatter)
             scatter_thread.start()
@@ -312,16 +309,16 @@ history_frame.pack(side=tk.BOTTOM, padx=10, pady=10)
 
 buttons = []
 
-symbols = ['←', '↑', '↓', '→','↻', '↺']
+symbols = ['←', '↑', '↓', '→', '➚', '↻', '↺', '➘']
 
 for i in range(4):
     button = tk.Button(button_frame, text=symbols[i], font=('Arial', 16), command=lambda idx=i: button_clicked(idx))
     button.grid(row=0, column=i, padx=5, pady=5)
     buttons.append(button)
 
-for i in range(4, 6):
+for i in range(4, 8):
     button = tk.Button(button_frame, text=symbols[i], font=('Arial', 16), command=lambda idx=i: button_clicked(idx))
-    button.grid(row=1, column=i-3, padx=5, pady=5)
+    button.grid(row=1, column=i-4, padx=5, pady=5)
     buttons.append(button)
 
 history_label = tk.Label(history_frame, text="History:")
