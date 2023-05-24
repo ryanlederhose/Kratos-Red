@@ -8,6 +8,7 @@ import serial.tools.list_ports
 import threading, queue, pyautogui
 from mmWaveProcessing import *
 from datalog import *
+import math
 
 history = []
 current_button = None
@@ -168,9 +169,9 @@ def plot_scatter():
 
         # print(detObj)
         # Generate random points for the scatter plot
-        x = -detObj["x"]
+        x = detObj["x"]
         y = detObj["y"]
-        v = detObj["velocity"]
+        v = detObj["v"]
         print("x:", x)
         print("y:", y)
         print("V:", v)
@@ -204,7 +205,7 @@ mmW_data_connected = "Failed to connect to mmW data"
 
 def connect_to_com4():
     # Connection to BSU and mmW
-    global BSU_connected, mmW_cli_connected, mmW_data_connected, sem
+    global BSU_connected, mmW_cli_connected, mmW_data_connected
 
     donglePort = "/dev/ttyACM2"
     cliPort = "/dev/ttyACM0"
@@ -220,8 +221,12 @@ def connect_to_com4():
     try:
         dongle = serial.Serial(donglePort, baudrate=115200, timeout=1)
         dongle.write(b"\n")
-        prompt1 = dongle.readline().decode('utf-8')
-        prompt2 = dongle.readline().decode('utf-8')
+        try:
+            prompt1 = dongle.readline().decode('utf-8')
+            prompt2 = dongle.readline().decode('utf-8')
+        except:
+            prompt1 = dongle.readline().decode('utf-8')
+            prompt2 = dongle.readline().decode('utf-8')
 
         if prompt2 == '\x1b[1;32mnRF-Central:~$ \x1b[m':
             print("Starting BSU Thread")
@@ -238,27 +243,33 @@ def connect_to_com4():
     try:
         cli = serial.Serial(cliPort, baudrate=115200, timeout=1)
         cli.write(b"\n")
-        prompt3 = cli.readline().decode('utf-8')
-        prompt4 = cli.readline().decode('utf-8')
+        try:
+            prompt3 = cli.readline().decode('utf-8')
+            prompt4 = cli.readline().decode('utf-8')
+        except UnicodeDecodeError:
+            prompt3 = cli.readline().decode('utf-8')
+            prompt4 = cli.readline().decode('utf-8')
 
         if prompt4 == 'mmwDemo:/>':
             print("Starting mmW Thread")
             mmW_cli_connected = "Connected to mmW CLI on " + port.device
             data = serial.Serial(ports[portNum - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
             mmW_data_connected = "Connected to mmW Data on " + ports[portNum - 1].device
-            mmw_thread = threading.Thread(target=mmw, args=(cli,data,))
+            mmw_thread = threading.Thread(target=mmw, args=(cli,data))
             mmw_thread.start()
             scatter_thread = threading.Thread(target=plot_scatter)
             scatter_thread.start()
-            database_thread = threading.Thread(target=influxSend, args=(queueLogs))
-            database_thread.start()
+            # database_thread = threading.Thread(target=influxSend)
+            # database_thread.start()
+            # ml_thread = threading.Thread(target=ml)
+            # ml_thread.start()
         
         else:
             cli.close()
             raise serial.serialutil.SerialException
 
     except serial.serialutil.SerialException:
-        print("Could not connect to " + cliPort)
+        print("Could not connect to " + cliPort)  
 
 
     # ports = serial.tools.list_ports.comports()
