@@ -7,17 +7,12 @@ import queue
 import serial
 from colorama import Fore
 from parser_mmw_demo import parser_one_mmw_demo_output_packet
+# from gui import button_clicked
 
-byteBuffer = np.zeros(2**15, dtype='uint8')
-byteBufferLength = 0
 
-Z_BOUND = 0.3
-X_BOUND = 0.3
 
 # ------------------------------------------------------------------
 
-queueXY = queue.Queue(maxsize=5)
-queueLogs = queue.Queue(maxsize=1)
 
 
 PROGRAM_PORT = '/dev/ttyACM0'
@@ -34,13 +29,35 @@ def serialConfig(progPort, configFile: str):
         try:
             progPort.write(x.encode())
             printSend(x.replace('\n',''))
+            # printSend(x)
             line =  progPort.readline().decode().replace('\r','').replace('\n','')
             printRecieve(str(line))
-            while (line != 'mmwDemo:/>'):
+
+            validRetMsg = False
+
+            while (line != 'mmwDemo:/>') and (line != 'sensorStop'):
+                # if (line == 'Done'):
+                #     break
+
+                if ('mmwDemo:/>' in str(line)):
+                    break
+                # if (line != 'mmwDemo:/>'):
+                #     validRetMsg = True
+
+                # if ('sensorStop' in x):
+                #     if ("Ignored: Sensor is already stopped" in line):
+                #         validRetMsg = True
+
                 if (x == 'sensorStart'):
-                    continue
+                    progPort.write('\n'.encode())
+                    line = progPort.readline().decode().replace('\r','').replace('\n','')
+                    break
+                progPort.write('\n'.encode())
                 line =  progPort.readline().decode().replace('\r','').replace('\n','')
                 printRecieve(str(line))
+
+            time.sleep(0.1)
+
         except UnicodeDecodeError:
             print("Bad read, trying again")
             progPort.write(x.encode())
@@ -122,126 +139,6 @@ def parseConfigFile(configFileName):
     return configParameters
 # ------------------------------------------------------------------
 
-
-x = np.zeros(80)
-y = np.zeros(80)
-v = np.zeros(80)
-
-OFFSET = 20
-
-frNum = 0
-
-
-def mmw(cliPort, dataPort):
-    global frNum
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
-
-    configFileName = repoPath + "radar_config2.cfg"
-    
-    MAX_NUM_OBJS = 10
-    NUM_FRAMES=80
-    frameNumber = 0
-    
-    numMovingPoints = 0
-    numPoints = 0
-
-    startSeq = False
-
-    serialConfig(cliPort, configFileName)
-
-    configParameters = parseConfigFile(configFileName)
-
-    t = 0
-
-    totalBytesParsed = 0
-    line =  dataPort.readline()
-    data = line
-
-    while True:
-        line = dataPort.readline()
-        data += line
-        
-        parser_result, \
-        headerStartIndex,  \
-        totalPacketNumBytes, \
-        numDetObj,  \
-        numTlv,  \
-        subFrameNumber,  \
-        detectedX_array,  \
-        detectedY_array,  \
-        detectedZ_array,  \
-        detectedV_array,  \
-        detectedRange_array,  \
-        detectedAzimuth_array,  \
-        detectedElevation_array,  \
-        detectedSNR_array,  \
-        detectedNoise_array = parser_one_mmw_demo_output_packet(data[totalBytesParsed::1], len(data)-totalBytesParsed, enablePrint=False, errorPrint=False) 
-
-        t += 1
-        timeLen = 0
-
-
-
-        if (parser_result == 0):
-            totalBytesParsed += (headerStartIndex+totalPacketNumBytes) 
-
-            detObj = {"numObj": numDetObj, "x": detectedX_array, "y": detectedY_array, "z": detectedZ_array, "v":detectedV_array}
-
-            frNum += 1
-
-            if not ("numObj" in detObj.keys()): # This probably never happens
-                continue
-
-            if not queueXY.full(): 
-                queueXY.put(detObj)
-
-            if not queueLogs.full(): 
-                detObj["frNum"] = frNum
-                queueLogs.put(detObj)
-
-            closestPoint = torch.Tensor([100,100,100])
-            closestNorm = closestPoint.norm()
-            
-            for x, y, z, v in zip(detectedX_array, detectedY_array, detectedZ_array, detectedV_array):
-                if (v != 0):
-                    point = torch.Tensor([x,y,z])
-                    norm = point.norm()
-
-                    if (norm < closestNorm):
-                            closestPoint = torch.Tensor([x, y, z])
-                            closestNorm = closestPoint.norm()
-
-            if closestNorm == torch.Tensor([100, 100, 100]).norm():
-                continue
-
-            print("Object detected at ")
-            print("(x, y, z): ", str("(") + str(closestPoint[0]), str(closestPoint[1]) + str(")"))
-
-            posString = ""
-
-            if closestPoint[2] < Z_BOUND:
-                posString += "Bottom"
-
-            elif closestPoint[2] < Z_BOUND * 2:
-                posString += "Middle"
-            
-            else:
-                posString += "Top"
-
-            posString += " "
-
-            if closestPoint[0] < -X_BOUND:
-                posString += "right"
-
-            elif closestPoint[0] > X_BOUND: 
-                posString += "left"
-
-            else:
-                posString += "centre"
-
-
-            print(posString)
 
 
 
