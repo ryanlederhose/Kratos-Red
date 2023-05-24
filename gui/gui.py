@@ -14,6 +14,12 @@ history = []
 current_button = None
 FLAG = 0
 
+Z_BOUND = 0.2
+X_BOUND = 0.2
+
+queueXY = queue.Queue(maxsize=5)
+queueLogs = queue.Queue(maxsize=1)
+
 button_queue = queue.Queue()
 
 def get_flag():
@@ -172,9 +178,9 @@ def plot_scatter():
         x = detObj["x"]
         y = detObj["y"]
         v = detObj["v"]
-        print("x:", x)
-        print("y:", y)
-        print("V:", v)
+        # print("x:", x)
+        # print("y:", y)
+        # print("V:", v)
 
         # 2D plot update
         ax1.cla()
@@ -197,7 +203,148 @@ def plot_scatter():
         
         # Redraw the Scatter Plots
         canvas.draw()
-        time.sleep(0.1)
+        time.sleep(0.05)
+
+
+x = np.zeros(80)
+y = np.zeros(80)
+v = np.zeros(80)
+
+OFFSET = 20
+
+frNum = 0
+
+
+def mmw(cliPort, dataPort):
+    global frNum
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
+
+    configFileName = repoPath + "radar_config2.cfg"
+
+    serialConfig(cliPort, configFileName)
+
+    cliPort.close()
+    t = 0
+
+    totalBytesParsed = 0
+    line =  dataPort.readline()
+    data = line
+
+    while True:
+        line = dataPort.readline()
+        data += line
+        # line = dataPort.read(dataPort.in_waiting)
+        # data += line
+
+        parser_result, \
+        headerStartIndex,  \
+        totalPacketNumBytes, \
+        numDetObj,  \
+        numTlv,  \
+        subFrameNumber,  \
+        detectedX_array,  \
+        detectedY_array,  \
+        detectedZ_array,  \
+        detectedV_array,  \
+        detectedRange_array,  \
+        detectedAzimuth_array,  \
+        detectedElevation_array,  \
+        detectedSNR_array,  \
+        detectedNoise_array = parser_one_mmw_demo_output_packet(data[totalBytesParsed::1], len(data)-totalBytesParsed, enablePrint=False, errorPrint=False) 
+
+        t += 1
+        
+        if (parser_result == 0):
+            totalBytesParsed += (headerStartIndex+totalPacketNumBytes) 
+
+            detObj = {"numObj": numDetObj, "x": detectedX_array, "y": detectedY_array, "z": detectedZ_array, "v":detectedV_array}
+
+            frNum += 1
+
+            if not ("numObj" in detObj.keys()): # This probably never happens
+                continue
+
+            if not queueXY.full(): 
+                queueXY.put(detObj)
+
+            if not queueLogs.full(): 
+                detObj["frNum"] = frNum
+                queueLogs.put(detObj)
+
+            closestPoint = torch.Tensor([100,100,100])
+            closestNorm = closestPoint.norm()
+            
+            for x, y, z, v in zip(detectedX_array, detectedY_array, detectedZ_array, detectedV_array):
+                if (v != 0):
+                    point = torch.Tensor([x,y,z])
+                    norm = point.norm()
+
+                    if (norm < closestNorm):
+                            closestPoint = torch.Tensor([x, y, z])
+                            closestNorm = closestPoint.norm()
+
+            if closestNorm == torch.Tensor([100, 100, 100]).norm():
+                continue
+
+            print("---------------------------")
+            print("Object detected at ")
+            print("(x, y, z): ", str("(") + str(closestPoint[0]), str(closestPoint[1]) + str(")"))
+
+            posString = ""
+
+            if closestPoint[2] < Z_BOUND:
+                posString += "Bottom"
+
+            elif closestPoint[2] < Z_BOUND * 2:
+                posString += "Middle"
+            
+            else:
+                posString += "Top"
+
+            posString += " "
+
+            if closestPoint[0] < -X_BOUND:
+                posString += "right"
+
+            elif closestPoint[0] > X_BOUND: 
+                posString += "left"
+
+            else:
+                posString += "centre"
+
+            print(posString)
+            print("---------------------------")
+
+            if (posString == "Bottom right"):
+                button_clicked(1-1)
+
+            elif (posString == "Bottom left"):
+                button_clicked(2-1)
+            
+            elif (posString == "Top left"):
+                button_clicked(3-1)
+
+            elif (posString == "Top right"):
+                button_clicked(4-1)
+
+            elif (posString == "Top centre"):
+                button_clicked(5-1)
+
+            elif (posString == "Bottom centre"):
+                button_clicked(6-1)
+
+            elif (posString == "Middle right"):
+                button_clicked(7-1)
+
+            elif (posString == "Middle left"):
+                button_clicked(8-1)
+
+            # elif (posString == "Middle centre"):
+            #     button_clicked(8)
+
+
+
     
 BSU_connected = "Failed to connect to BSU"
 mmW_cli_connected = "Failed to connect to mmW CLI"
@@ -209,14 +356,9 @@ def connect_to_com4():
 
     donglePort = "/dev/ttyACM2"
     cliPort = "/dev/ttyACM0"
+    dataPort = "/dev/ttyACM1"
 
     ports = serial.tools.list_ports.comports()
-
-    portNum = 0
-    for port in ports:
-        if port.device == cliPort:
-            break
-        portNum += 1
 
     try:
         dongle = serial.Serial(donglePort, baudrate=115200, timeout=1)
@@ -241,75 +383,28 @@ def connect_to_com4():
         print("Could not connect to " + donglePort)
 
     try:
-        cli = serial.Serial(cliPort, baudrate=115200, timeout=1)
-        cli.write(b"\n")
-        try:
-            prompt3 = cli.readline().decode('utf-8')
-            prompt4 = cli.readline().decode('utf-8')
-        except UnicodeDecodeError:
-            prompt3 = cli.readline().decode('utf-8')
-            prompt4 = cli.readline().decode('utf-8')
+        cli = serial.Serial(cliPort, baudrate=115200)
+        mmW_cli_connected = "Connected to mmW CLI on " + cliPort
+    except serial.serialutil.SerialException:
+        print("Could not connect to " + cliPort) 
+        return
 
-        if prompt4 == 'mmwDemo:/>':
-            print("Starting mmW Thread")
-            mmW_cli_connected = "Connected to mmW CLI on " + port.device
-            data = serial.Serial(ports[portNum - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
-            mmW_data_connected = "Connected to mmW Data on " + ports[portNum - 1].device
-            mmw_thread = threading.Thread(target=mmw, args=(cli,data))
-            mmw_thread.start()
-            scatter_thread = threading.Thread(target=plot_scatter)
-            scatter_thread.start()
-            # database_thread = threading.Thread(target=influxSend)
-            # database_thread.start()
-            # ml_thread = threading.Thread(target=ml)
-            # ml_thread.start()
-        
-        else:
-            cli.close()
-            raise serial.serialutil.SerialException
+    try:
+        data = serial.Serial(dataPort, baudrate=921600) 
+        mmW_data_connected = "Connected to mmW Data on " + dataPort        
 
     except serial.serialutil.SerialException:
-        print("Could not connect to " + cliPort)  
+        print("Could not connect to " + dataPort) 
+        return
+    
+    print("Starting mmW Thread")
+    mmw_thread = threading.Thread(target=mmw, args=(cli, data))
+    mmw_thread.start()
 
-
-    # ports = serial.tools.list_ports.comports()
-    # port_number = 0
-    # for port in ports:
-    #     print(f"Port: {port.device}, Description: {port.description}")
-    #     if port.description == "XDS110 (02.03.00.05) Embed with CMSIS-DAP":
-    #         try:
-    #             ser = serial.Serial(port.device, baudrate=115200, timeout=1)
-    #             print("Connected to " + port.device)
-    #         except serial.serialutil.SerialException:
-    #             print("Could not connect to " + port.device)
-    #             continue
-    #         ser.write(b"\n")
-    #         try:
-    #             a = ser.readline().decode('utf-8')
-    #             a = ser.readline().decode('utf-8')
-    #             break
-    #         except UnicodeDecodeError:
-    #             ser.close()
-    #         if a == '\x1b[1;32mBSU_SHELL:~$ \x1b[m':
-    #             print("Starting BSU Thread")
-    #             bsu_thread = threading.Thread(target=bsu, args=(ser,))
-    #             bsu_thread.start()
-    #             BSU_connected = "Connected to BSU on " + port.device
-    #         elif a == 'mmwDemo:/>':
-    #             print("Starting mmW Thread")
-    #             mmW_cli_connected = "Connected to mmW CLI on " + port.device
-    #             ser2 = serial.Serial(ports[port_number - 1].device, baudrate=921600, timeout=1) ##### CHANGE TO PORT_NUMBER - 1 for LINUX
-    #             mmW_data_connected = "Connected to mmW Data on " + ports[port_number - 1].device
-    #             mmw_thread = threading.Thread(target=mmw, args=(ser,ser2))
-    #             mmw_thread.start()
-    #             scatter_thread = threading.Thread(target=plot_scatter, args=(ax1))
-    #             scatter_thread.start()
-                
-    #         else:
-    #             ser.close()
-
-    #         port_number += 1
-        
+    scatter_thread = threading.Thread(target=plot_scatter)
+    scatter_thread.start()
+    # database_thread = threading.Thread(target=influxSend)
+    # database_thread.start()
 
     messagebox.showinfo("Connection Status", BSU_connected + "\n" + 
             mmW_cli_connected + "\n" + mmW_data_connected)
@@ -348,6 +443,7 @@ for i in range(4, 8):
     button = tk.Button(button_frame, text=symbols[i], font=('Arial', 16), command=lambda idx=i: button_clicked(idx))
     button.grid(row=1, column=i-4, padx=5, pady=5)
     buttons.append(button)
+
 
 history_label = tk.Label(history_frame, text="History:")
 history_label.pack()
