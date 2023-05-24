@@ -76,6 +76,7 @@
 #define GESTURE_MOVE_LEFT 6
 #define GESTURE_MOVE_UP 7
 #define GESTURE_MOVE_DOWN 8
+#define GESTURE_FULL_ROTATION 9
 
 typedef struct __attribute__((packed))_hciPacket {
     uint8_t preamble;

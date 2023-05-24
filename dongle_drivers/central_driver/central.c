@@ -16,13 +16,13 @@ static void start_scan(void);
 LOG_MODULE_REGISTER(log_module, 4);
 
 //Define the BLE command message queue
-K_MSGQ_DEFINE(command_msgq, sizeof (hciPacket_t), 20, 4);
+K_MSGQ_DEFINE(command_msgq, sizeof(hciPacket_t), 20, 4);
 
-static struct bt_conn *default_conn;
-static struct bt_uuid *hci_uuid_ptr = HCI_AHU_UUID;
+static struct bt_conn* default_conn;
+static struct bt_uuid* hci_uuid_ptr = HCI_AHU_UUID;
 uint8_t chrcFlag = 0x00;
 
-uint16_t hci_uuid[] = {0xAA, 0x43, 0x54, 0xDD, 0xFD, 0x4E, 0x89, 0xBE, 0x32, 0x22, 0xFF, 0x13, 0x3F, 0x2A, 0x29, 0x95};
+uint16_t hci_uuid[] = { 0xAA, 0x43, 0x54, 0xDD, 0xFD, 0x4E, 0x89, 0xBE, 0x32, 0x22, 0xFF, 0x13, 0x3F, 0x2A, 0x29, 0x95 };
 
 static uint16_t hci_write_handle;
 
@@ -32,7 +32,7 @@ static uint16_t hci_write_handle;
  * @param argc number of arguments
  * @param argv argument string array
  */
-static void cmd_scan(const struct shell *shell, size_t argc, char **argv) {
+static void cmd_scan(const struct shell* shell, size_t argc, char** argv) {
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
@@ -58,7 +58,7 @@ static void cmd_scan(const struct shell *shell, size_t argc, char **argv) {
  * @param shell pointer to shell struct
  * @param argv argument string array
 */
-static void cmd_gesture(const struct shell *shell, size_t argc, char **argv) {
+static void cmd_gesture(const struct shell* shell, size_t argc, char** argv) {
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
@@ -72,8 +72,8 @@ static void cmd_gesture(const struct shell *shell, size_t argc, char **argv) {
         return;
     }
 
-    if (((int) argv[1][0] - 48) <= 9) {
-        pack.data = ((int) argv[1][0] - 48);
+    if (((int)argv[1][0] - 48) <= 12) {
+        pack.data = ((int)argv[1][0] - 48);
         gatt_write(hci_write_handle, &pack);
     }
 }
@@ -83,7 +83,7 @@ static void cmd_gesture(const struct shell *shell, size_t argc, char **argv) {
  * @param shell pointer to shell struct
  * @param argv argument string array
 */
-static void cmd_reset(const struct shell *shell, size_t argc, char **argv) {
+static void cmd_reset(const struct shell* shell, size_t argc, char** argv) {
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
@@ -107,9 +107,9 @@ static void cmd_reset(const struct shell *shell, size_t argc, char **argv) {
  * @param user_data user data for bluetooth
  * @return bool status of BLE connection
  */
-static bool data_parse_cb(struct bt_data *data, void *user_data) {
+static bool data_parse_cb(struct bt_data* data, void* user_data) {
 
-    bt_addr_le_t *addr = user_data;
+    bt_addr_le_t* addr = user_data;
     int count = 0;
 
     //Check the UUID
@@ -121,7 +121,7 @@ static bool data_parse_cb(struct bt_data *data, void *user_data) {
         }
         if (count == UUID_BUFFER_SIZE) {
             int err;
-            err = bt_le_scan_stop();    //Stop scanning
+            err = bt_le_scan_stop(); //Stop scanning
             k_msleep(10);
             if (err) {
                 LOG_ERR("Scan Stop Failed\r\n");
@@ -129,11 +129,11 @@ static bool data_parse_cb(struct bt_data *data, void *user_data) {
             }
 
             //Create BLE connection
-            struct bt_le_conn_param *connectionParams = BT_LE_CONN_PARAM_DEFAULT;
+            struct bt_le_conn_param* connectionParams = BT_LE_CONN_PARAM_DEFAULT;
             err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN, connectionParams, &default_conn);
             if (err) {
                 LOG_ERR("Connection failed\r\n");
-                start_scan();   //Scan again
+                start_scan(); //Scan again
             }
             return false;
         }
@@ -148,28 +148,27 @@ static bool data_parse_cb(struct bt_data *data, void *user_data) {
  * @param type type of connection
  * @param ad bluetooth data struct
  */
-static void device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
-			 struct net_buf_simple *ad) {
+static void device_found(const bt_addr_le_t* addr, int8_t rssi, uint8_t type,
+                         struct net_buf_simple* ad) {
 
-	char addr_str[BT_ADDR_LE_STR_LEN];
+    char addr_str[BT_ADDR_LE_STR_LEN];
 
     bt_addr_le_to_str(addr, addr_str, sizeof(addr_str));
 
-	//Exit if device is not conectable
-	if (type != BT_GAP_ADV_TYPE_ADV_IND &&
-	    type != BT_GAP_ADV_TYPE_ADV_DIRECT_IND) {
-		return;
-	}
+    //Exit if device is not conectable
+    if (type != BT_GAP_ADV_TYPE_ADV_IND && type != BT_GAP_ADV_TYPE_ADV_DIRECT_IND) {
+        return;
+    }
 
-    bt_data_parse(ad, data_parse_cb, (void*) addr);
+    bt_data_parse(ad, data_parse_cb, (void*)addr);
 }
 
 /**
  * @brief Start an active BLE scan for nearby devices.
  */
 static void start_scan(void) {
-	int err;
-    
+    int err;
+
     struct bt_le_scan_param btScanParams = {
         .type = BT_LE_SCAN_TYPE_ACTIVE,
         .options = BT_LE_SCAN_OPT_NONE,
@@ -178,13 +177,13 @@ static void start_scan(void) {
     };
 
     //Start scanning
-	err = bt_le_scan_start(&btScanParams, device_found);
-	if (err) {
-		printk("Scanning failed to start (err %d)\n", err);
-		return;
-	}
+    err = bt_le_scan_start(&btScanParams, device_found);
+    if (err) {
+        printk("Scanning failed to start (err %d)\n", err);
+        return;
+    }
 
-	printk("Scanning successfully started\n");
+    printk("Scanning successfully started\n");
 }
 
 /**
@@ -194,73 +193,72 @@ static void start_scan(void) {
  * @param params parameters of gatt discovery
  * @return uint8_t
  */
-static uint8_t gatt_discover_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-			     struct bt_gatt_discover_params *params) {
-	int err;
+static uint8_t gatt_discover_cb(struct bt_conn* conn, const struct bt_gatt_attr* attr,
+                                struct bt_gatt_discover_params* params) {
+    int err;
 
     //Check if attribute is null
-	if (attr == NULL) {
-		if (hci_write_handle == 0) {
+    if (attr == NULL) {
+        if (hci_write_handle == 0) {
             LOG_ERR("Did not discover AHU/MNODE GATT");
-		}
-		memset(params, 0, sizeof(*params));
-		return BT_GATT_ITER_STOP;
-	}
+        }
+        memset(params, 0, sizeof(*params));
+        return BT_GATT_ITER_STOP;
+    }
 
     LOG_DBG("Attribute handle %u", attr->handle);
 
     //Check for primary service
-	if (params->type == BT_GATT_DISCOVER_PRIMARY && bt_uuid_cmp(params->uuid, HCI_AHU_UUID) == 0) {
-		LOG_DBG("Found AHU primary service");
+    if (params->type == BT_GATT_DISCOVER_PRIMARY && bt_uuid_cmp(params->uuid, HCI_AHU_UUID) == 0) {
+        LOG_DBG("Found AHU primary service");
 
-		params->uuid = NULL;
-		params->start_handle = attr->handle + 1;
-		params->type = BT_GATT_DISCOVER_CHARACTERISTIC;
+        params->uuid = NULL;
+        params->start_handle = attr->handle + 1;
+        params->type = BT_GATT_DISCOVER_CHARACTERISTIC;
 
-		err = bt_gatt_discover(conn, params);   //Discover GATT characteristics
-		if (err != 0) {
+        err = bt_gatt_discover(conn, params); //Discover GATT characteristics
+        if (err != 0) {
             LOG_ERR("Discovery of GATT Characteristics failed (err %d)", err);
-		}
+        }
 
-		return BT_GATT_ITER_STOP;
-	} else if (params->type == BT_GATT_DISCOVER_CHARACTERISTIC) {
-		struct bt_gatt_chrc *chrcGatt = (struct bt_gatt_chrc *) attr->user_data;
-        
+        return BT_GATT_ITER_STOP;
+    } else if (params->type == BT_GATT_DISCOVER_CHARACTERISTIC) {
+        struct bt_gatt_chrc* chrcGatt = (struct bt_gatt_chrc*)attr->user_data;
+
         if (bt_uuid_cmp(chrcGatt->uuid, HCI_CHAR_AHU_UUID) == 0) {
             LOG_DBG("Found AHU Characteristic");
 
-			hci_write_handle = chrcGatt->value_handle;  //Save GATT characteristic handle
+            hci_write_handle = chrcGatt->value_handle; //Save GATT characteristic handle
             chrcFlag = 0x01;
         }
-	}
+    }
 
-	return BT_GATT_ITER_CONTINUE;
+    return BT_GATT_ITER_CONTINUE;
 }
-
 
 /**
  * @brief Discover the GATT services and characteristics of a BLE connection
  */
 static void gatt_discover(void) {
-	static struct bt_gatt_discover_params gattDiscoverParams;
-	int err;
+    static struct bt_gatt_discover_params gattDiscoverParams;
+    int err;
 
     LOG_DBG("Begin discovering services and characteristics");
 
     //Set gattDiscoverParams
     gattDiscoverParams.type = BT_GATT_DISCOVER_PRIMARY;
     gattDiscoverParams.uuid = hci_uuid_ptr;
-	gattDiscoverParams.func = gatt_discover_cb;
-	gattDiscoverParams.start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
-	gattDiscoverParams.end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
+    gattDiscoverParams.func = gatt_discover_cb;
+    gattDiscoverParams.start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
+    gattDiscoverParams.end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
 
-	err = bt_gatt_discover(default_conn, &gattDiscoverParams);  //Discover GATT
-	if (err != 0) {
+    err = bt_gatt_discover(default_conn, &gattDiscoverParams); //Discover GATT
+    if (err != 0) {
         LOG_ERR("Discovery of gatt services and characteristics failed");
         return;
     }
 
-	LOG_DBG("Discovery complete");
+    LOG_DBG("Discovery complete");
 }
 
 /**
@@ -268,28 +266,28 @@ static void gatt_discover(void) {
  * @param conn connection handle
  * @param err error code
  */
-static void connected(struct bt_conn *conn, uint8_t err) {
-	char addr[BT_ADDR_LE_STR_LEN];
+static void connected(struct bt_conn* conn, uint8_t err) {
+    char addr[BT_ADDR_LE_STR_LEN];
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	if (err != 0) {
-		LOG_ERR("Failed to connect to %s (%u)", addr, err);
+    if (err != 0) {
+        LOG_ERR("Failed to connect to %s (%u)", addr, err);
 
-		bt_conn_unref(default_conn);
-		default_conn = NULL;
+        bt_conn_unref(default_conn);
+        default_conn = NULL;
 
-		start_scan(); 
-		return;
-	}
+        start_scan();
+        return;
+    }
 
-	LOG_DBG("Connected to %s", addr);
+    LOG_DBG("Connected to %s", addr);
 
-	default_conn = conn;
+    default_conn = conn;
 
-	LOG_DBG("Discovering services and characteristics");
+    LOG_DBG("Discovering services and characteristics");
 
-	gatt_discover();    //Discover gatt
+    gatt_discover(); //Discover gatt
 }
 
 /**
@@ -297,21 +295,21 @@ static void connected(struct bt_conn *conn, uint8_t err) {
  * @param conn connection handle
  * @param reason reason for disconnection
  */
-static void disconnected(struct bt_conn *conn, uint8_t reason) {
-	char addr[BT_ADDR_LE_STR_LEN];
+static void disconnected(struct bt_conn* conn, uint8_t reason) {
+    char addr[BT_ADDR_LE_STR_LEN];
 
-	if (conn != default_conn) {
-		return;
-	}
+    if (conn != default_conn) {
+        return;
+    }
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	LOG_ERR("Disconnected: %s (reason 0x%02x)\n", addr, reason);
+    LOG_ERR("Disconnected: %s (reason 0x%02x)\n", addr, reason);
 
-	bt_conn_unref(default_conn);
-	default_conn = NULL;
+    bt_conn_unref(default_conn);
+    default_conn = NULL;
 
-	start_scan();   //start scanning again
+    start_scan(); //start scanning again
 }
 
 /**
@@ -320,13 +318,13 @@ static void disconnected(struct bt_conn *conn, uint8_t reason) {
  * @param err error code
  * @param params gatt parameters
  */
-static void hci_write_gatt(struct bt_conn *conn, uint8_t err, struct bt_gatt_write_params *params) {
+static void hci_write_gatt(struct bt_conn* conn, uint8_t err, struct bt_gatt_write_params* params) {
 
-	if (err != BT_ATT_ERR_SUCCESS) {
-		printk("Write failed: 0x%02X\n", err);
+    if (err != BT_ATT_ERR_SUCCESS) {
+        printk("Write failed: 0x%02X\n", err);
     }
 
-	memset(params, 0, sizeof(*params));
+    memset(params, 0, sizeof(*params));
 
     return;
 }
@@ -339,8 +337,8 @@ static void hci_write_gatt(struct bt_conn *conn, uint8_t err, struct bt_gatt_wri
  * @param len data length
  * @param flags set flags
  */
-static void hci_read_gatt(struct bt_conn *conn, const struct bt_gatt_attr *attr, 
-                const uint8_t *buf, uint16_t len, uint8_t flags) {
+static void hci_read_gatt(struct bt_conn* conn, const struct bt_gatt_attr* attr,
+                          const uint8_t* buf, uint16_t len, uint8_t flags) {
     return;
 }
 
@@ -349,39 +347,38 @@ static void hci_read_gatt(struct bt_conn *conn, const struct bt_gatt_attr *attr,
  * @param handle handle of gatt characteristic
  * @param pack data packet to send over BLE
  */
-static void gatt_write(uint16_t handle, hciPacket_t *pack) {
+static void gatt_write(uint16_t handle, hciPacket_t* pack) {
 
-	static struct bt_gatt_write_params params;
-	int err;
-    char *buf = (char *) pack;
+    static struct bt_gatt_write_params params;
+    int err;
+    char* buf = (char*)pack;
 
     params.data = buf;
     params.length = sizeof(hciPacket_t);
-	params.func = hci_write_gatt;
-	params.handle = handle;
+    params.func = hci_write_gatt;
+    params.handle = handle;
 
-	err = bt_gatt_write(default_conn, &params);
-	if (err != 0) {
-		LOG_ERR("Failed write (err 0x%X)", err);
-	}
+    err = bt_gatt_write(default_conn, &params);
+    if (err != 0) {
+        LOG_ERR("Failed write (err 0x%X)", err);
+    }
 }
 
 /**
  * @brief define a new service for the bsu along with corresponding characteristics
  */
 BT_GATT_SERVICE_DEFINE(bsu_ahu_service, BT_GATT_PRIMARY_SERVICE(HCI_BSU_UUID),
-	BT_GATT_CHARACTERISTIC(HCI_CHAR_BSU_UUID,
-    			    (BT_GATT_CHRC_WRITE_WITHOUT_RESP),
-			       (BT_GATT_PERM_WRITE), NULL,
-			       hci_read_gatt, NULL),
-);
+                       BT_GATT_CHARACTERISTIC(HCI_CHAR_BSU_UUID,
+                                              (BT_GATT_CHRC_WRITE_WITHOUT_RESP),
+                                              (BT_GATT_PERM_WRITE), NULL,
+                                              hci_read_gatt, NULL), );
 
 /**
  * @brief define the connection callback functions for BLE
  */
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.connected = connected,
-	.disconnected = disconnected,
+    .connected = connected,
+    .disconnected = disconnected,
 };
 
 /**
@@ -403,7 +400,7 @@ void dongle_shell_init() {
  * @brief Main thread for Base Station Unit's (BSU command) command line interface implementation
  */
 void dongle_shell_thread(void) {
-    const struct device *dev_bsu_shell;
+    const struct device* dev_bsu_shell;
     uint32_t dtr = 0;
     uint8_t val = 1;
 
@@ -414,7 +411,7 @@ void dongle_shell_thread(void) {
     }
 
     /* Enable the USB Driver */
-    if (usb_enable(NULL)) { 
+    if (usb_enable(NULL)) {
         return;
     }
 
@@ -424,13 +421,13 @@ void dongle_shell_thread(void) {
         k_msleep(100);
     }
 
-    dongle_shell_init();   //initialise the shell
+    dongle_shell_init(); //initialise the shell
 
     hciPacket_t txPacket;
 
     for (;;) {
-        
-        //Check if we need to send a message of BLE 
+
+        //Check if we need to send a message of BLE
         if (k_msgq_get(&command_msgq, &txPacket, K_MSEC(10)) == 0) {
             if (chrcFlag == 0x01) {
                 gatt_write(hci_write_handle, &txPacket);
@@ -457,7 +454,7 @@ void bt_thread(void) {
 }
 
 /* Define ahu_shell and ahu_uart threads */
-K_THREAD_DEFINE(shell_thread_tid, SHELL_THREAD_STACK, dongle_shell_thread, 
-        NULL, NULL, NULL, SHELL_THREAD_PRIORITY, 0, 0);
-K_THREAD_DEFINE(bt_thread_tid, BT_THREAD_STACK, bt_thread, 
-        NULL, NULL, NULL, BT_THREAD_PRIORITY, 0, 0);
+K_THREAD_DEFINE(shell_thread_tid, SHELL_THREAD_STACK, dongle_shell_thread,
+                NULL, NULL, NULL, SHELL_THREAD_PRIORITY, 0, 0);
+K_THREAD_DEFINE(bt_thread_tid, BT_THREAD_STACK, bt_thread,
+                NULL, NULL, NULL, BT_THREAD_PRIORITY, 0, 0);

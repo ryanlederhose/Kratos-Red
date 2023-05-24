@@ -5,6 +5,7 @@ led matrix
 '''
 
 # Imports
+from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 import serial
 import sys
 import math
@@ -12,7 +13,6 @@ import time
 import copy
 
 sys.path.append('/home/pi/rpi-rgb-led-matrix/bindings/python')
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
 # Global Constants
 DATALIST_EMPTY = ['', '', '', '', '', '', '', '']
@@ -30,6 +30,7 @@ MOVE_RIGHT = 5
 MOVE_LEFT = 6
 MOVE_UP = 7
 MOVE_DOWN = 8
+FULL_ROTATION = 9
 
 GESTURE = 1
 RESET = 2
@@ -39,31 +40,35 @@ START_UP = 4
 '''
 LEDMatrix: Represents the AdaFruit 32 x 32 LED Matrix
 '''
+
+
 class LEDMatrix(object):
 
     '''
     LEDMatrix constructor
     '''
+
     def __init__(self, *args, **kwargs):
         self.matrix = RGBMatrix()
-        self.board = [[(0, 0, 0) for i in range(32)] for i in range(32)]    #represents led matrix
+        self.board = [[(0, 0, 0) for i in range(32)]
+                      for i in range(32)]  # represents led matrix
         self.offset_canvas = self.matrix.CreateFrameCanvas()
 
         self.size = 16
 
-    
     '''
     Initialise the start up sequence for the LED matrix
     Parameters:
         text (bool) - True if you need welcoming text
     '''
+
     def start_up_sequence(self, text):
         if text == True:
             # Write some welcoming text
             self.font = graphics.Font()
             self.font.LoadFont('/home/pi/rpi-rgb-led-matrix/fonts/9x18.bdf')
             textColour = graphics.Color(255, 255, 0)
-            pos = self.offset_canvas.width 
+            pos = self.offset_canvas.width
             my_text = 'Welcome to Kratos-Red\'s 4011 Final Project :)'
             z = 1
             while True:
@@ -72,13 +77,14 @@ class LEDMatrix(object):
                     break
                 self.offset_canvas.Clear()
 
-                len = graphics.DrawText(self.offset_canvas, self.font, pos, 
-                                10, textColour, my_text)
+                len = graphics.DrawText(self.offset_canvas, self.font, pos,
+                                        10, textColour, my_text)
                 pos -= 1
                 if (pos + len < 0):
                     pos = self.offset_canvas.width
                 time.sleep(0.025)
-                self.offset_canvas = self.matrix.SwapOnVSync(self.offset_canvas)
+                self.offset_canvas = self.matrix.SwapOnVSync(
+                    self.offset_canvas)
 
         self.clear_board()  # Clear the board
 
@@ -91,18 +97,21 @@ class LEDMatrix(object):
     Parameters
         increment - how much to enlarge/contact the square
     '''
+
     def build_square(self, increment):
         self.clear_board()
         self.fill_rectangle(8 - increment, 8 - increment, 16, 16, 255, 0, 0)
         self.fill_rectangle(8 - increment, 16, 16, 24 + increment, 255, 255, 0)
         self.fill_rectangle(16, 8 - increment, 24 + increment, 16, 0, 255, 0)
-        self.fill_rectangle(16, 16, 24 + increment, 24 + increment, 0, 255, 255)
-    
+        self.fill_rectangle(16, 16, 24 + increment,
+                            24 + increment, 0, 255, 255)
+
     '''
     Fill the LED matrix with a specified RGB value
     Parameters
         r, g, b (int) - RGB values
     '''
+
     def fill_board(self, r, g, b):
         for j in range(0, self.matrix.width):
             for i in range(0, self.matrix.height):
@@ -112,27 +121,32 @@ class LEDMatrix(object):
     '''
     Clear the board array
     '''
+
     def clear_board(self):
         self.fill_board(0, 0, 0)
 
     '''
     Update the LED matrix with the self.board array
     '''
+
     def update_matrix(self):
         for j in range(0, self.matrix.width):
             for i in range(0, self.matrix.height):
-                self.offset_canvas.SetPixel(i, j, self.board[i][j][0], self.board[i][j][1], self.board[i][j][2])
+                self.offset_canvas.SetPixel(
+                    i, j, self.board[i][j][0], self.board[i][j][1], self.board[i][j][2])
         self.offset_canvas = self.matrix.SwapOnVSync(self.offset_canvas)
-    
+
     '''
     Update the LED matrix with another array representing the led matrix
     Parameters:
         boardCopy (2d array) - array representing matrix
     '''
+
     def update_matrix_with_board(self, boardCopy):
         for j in range(0, self.matrix.width):
             for i in range(0, self.matrix.height):
-                self.offset_canvas.SetPixel(i, j, boardCopy[i][j][0], boardCopy[i][j][1], boardCopy[i][j][2])
+                self.offset_canvas.SetPixel(
+                    i, j, boardCopy[i][j][0], boardCopy[i][j][1], boardCopy[i][j][2])
         self.offset_canvas = self.matrix.SwapOnVSync(self.offset_canvas)
 
     '''
@@ -142,15 +156,17 @@ class LEDMatrix(object):
         y1, y2 - y coordinates to fill
         r, g, b - rgb values
     '''
+
     def fill_rectangle(self, x1, y1, x2, y2, r, g, b):
         for j in range(x1, x2):
             for i in range(y1, y2):
                 self.board[i][j] = (r, g, b)
-        self.update_matrix()    
-    
+        self.update_matrix()
+
     '''
     Flip the board on itself
     '''
+
     def flip_board(self):
 
         # Make a copy of the board
@@ -175,7 +191,8 @@ class LEDMatrix(object):
             for i in range(0, 32):
                 for j in range(0, iterations):
                     self.board[i][15 - j] = flippedBoard[i][iterations - 1 - j]
-                    self.board[i][16 + j] = flippedBoard[i][32 - iterations + j]
+                    self.board[i][16 +
+                                  j] = flippedBoard[i][32 - iterations + j]
             iterations = iterations + 1
             self.update_matrix()
             time.sleep(0.02)
@@ -186,6 +203,7 @@ class LEDMatrix(object):
         direction - direction of movement
         pixels - number of pixels to move by
     '''
+
     def move_array(self, direction, pixels):
         num_rows = len(self.board)
         num_cols = len(self.board[0])
@@ -205,13 +223,14 @@ class LEDMatrix(object):
                 for _ in range(pixels):
                     row.append(row.pop(0))
         self.update_matrix()
-    
+
     '''
     Rotate the array by a given angle over a certain amount of frames
     Parameters:
         angle - angle of rotation
         frames - number of frames
     '''
+
     def rotate_array_by_angle(self, angle, frames):
 
         boardRotated = [[(0, 0, 0) for i in range(32)] for i in range(32)]
@@ -241,7 +260,7 @@ class LEDMatrix(object):
                 rotation -= 2
 
             # See if we need to update the led matrix
-            if framesCount == frames:  
+            if framesCount == frames:
                 self.update_matrix_with_board(boardRotated)
                 framesCount = 0
             if stopCondition == rotation:
@@ -259,52 +278,62 @@ class LEDMatrix(object):
                     rot_x, rot_y = rotate(x - cent_x, y - cent_x, sin, cos)
 
                     if x >= min_display and x < max_display and y >= min_display and y < max_display:
-                        boardRotated[round(rot_x + cent_x)][round(rot_y + cent_y)] = self.board[x][y]    
+                        boardRotated[round(
+                            rot_x + cent_x)][round(rot_y + cent_y)] = self.board[x][y]
                     else:
                         try:
-                            boardRotated[round(rot_x + cent_x)][round(rot_y + cent_y)] = (0, 0, 0)
+                            boardRotated[round(
+                                rot_x + cent_x)][round(rot_y + cent_y)] = (0, 0, 0)
                         except IndexError:
                             continue
 
             framesCount = framesCount + 1   # Increment frames
 
+
 '''
 SerialCommunication: represents the serial communication between pc and nRF dongle
 '''
+
+
 class SerialCommunication(object):
 
     '''
     SerialCommunication constructor
     '''
+
     def __init__(self, *args, **kwargs):
         self.attempt_serial_connection()
-    
+
     '''
     Attempt to write data to the serial port
     Parameters
         data - data to write
     '''
+
     def write_data(self, data):
         try:
             self.ser.write(data.encode('utf-8'))
             return 0
         except Exception as e:
-            print (e)
+            print(e)
             return -1
-    
+
     '''
     Attempt to open a serial connection
     '''
+
     def attempt_serial_connection(self):
         try:
-            self.ser = serial.Serial('/dev/ttyACM0', baudrate=115200, timeout=1)
+            self.ser = serial.Serial(
+                '/dev/ttyACM0', baudrate=115200, timeout=1)
         except Exception as e:
             print(e)
             return
-    
+
     '''
     Get any incoming data from the nRF dongle
-    '''    
+    '''
+
     def get_data(self):
         rxBuffer = ""
         dataList = DATALIST_EMPTY
@@ -335,11 +364,11 @@ class SerialCommunication(object):
                     input[inputIndex] += c
             except Exception as e:
                 return -1
-            
+
             # Check if data or command byte
             if ''.join(dataList) == '<Data>: ':
                 valueFlag = True
-            elif ''.join(commandList) =='<Command>: ':
+            elif ''.join(commandList) == '<Command>: ':
                 valueFlag = True
 
             if readFlag == True:
@@ -349,9 +378,12 @@ class SerialCommunication(object):
                 input.append('')
                 return copyInput
 
+
 '''
 Main loop - control the program flow
 '''
+
+
 def main():
 
     btConnection = False    # Variable for ble connection
@@ -360,12 +392,13 @@ def main():
     serial_communication = SerialCommunication()
     led_matrix = LEDMatrix()
 
-    serial_communication.write_data('connect\n')    # Check if there is an existing bt connection
+    # Check if there is an existing bt connection
+    serial_communication.write_data('connect\n')
 
     while True:
-        data = serial_communication.get_data()   #get data over serial port
-        
-        #parse the data
+        data = serial_communication.get_data()  # get data over serial port
+
+        # parse the data
         for i in range(len(data)):
             data[i] = int(data[i])
 
@@ -380,13 +413,15 @@ def main():
             elif data[DATA] == DOWN_SWIPE:
                 led_matrix.flip_board()
             elif data[DATA] == MOVE_UP:
-                led_matrix.move_array("up", 4)    
+                led_matrix.move_array("up", 4)
             elif data[DATA] == MOVE_LEFT:
-                led_matrix.move_array("left", 4)    
+                led_matrix.move_array("left", 4)
             elif data[DATA] == MOVE_DOWN:
-                led_matrix.move_array("down", 4)    
+                led_matrix.move_array("down", 4)
             elif data[DATA] == MOVE_RIGHT:
-                led_matrix.move_array("right", 4)                           
+                led_matrix.move_array("right", 4)
+            elif data[DATA] == FULL_ROTATION:
+                led_matrix.rotate_array_by_angle(360, 10)
         elif data[COMMAND] == RESET:
             led_matrix.start_up_sequence(text=False)
         elif data[COMMAND] == CLEAR:
@@ -397,14 +432,18 @@ def main():
                 led_matrix.start_up_sequence(text=True)
                 btConnection = True
 
+
 '''
 Apply a rotation matrix to a x, y coordinate
 Parameters:
     x, y - coordinates
     sin, cos - sin/cos of an angle
 '''
+
+
 def rotate(x, y, sin, cos):
     return x * cos - y * sin, x * sin + y * cos
+
 
 # Start the program
 if __name__ == "__main__":
