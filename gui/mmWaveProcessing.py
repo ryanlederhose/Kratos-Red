@@ -4,28 +4,69 @@ import torch
 import time
 import os
 import queue
+import serial
+from colorama import Fore
+from parser_mmw_demo import parser_one_mmw_demo_output_packet
 
 byteBuffer = np.zeros(2**15, dtype='uint8')
 byteBufferLength = 0
+
+Z_BOUND = 0.3
+X_BOUND = 0.3
 
 # ------------------------------------------------------------------
 
 queueXY = queue.Queue(maxsize=5)
 queueLogs = queue.Queue(maxsize=1)
 
-# Function to configure the serial ports and send 
-# the data from the configuration file to the radar.
-def serialConfig(cliPort, configFileName):
 
-    # Read the configuration file and send it to the board
-    config = [line.rstrip('\r\n') for line in open(configFileName)]
-    for i in config:
-        cliPort.write((i + '\n').encode())
-        cliPort.write(('\n').encode())
-        print(i)
-        time.sleep(0.01)
-        
-    return
+PROGRAM_PORT = '/dev/ttyACM0'
+
+def serialConfig(progPort, configFile: str):
+    """
+    This uploads the config file to the radar module on PROGRAM_PORT. Takes the file location as input for where to upload file 
+    """
+
+    f = open(configFile, "r")
+    for x in f:
+        if x[0] == '%':
+            continue
+        try:
+            progPort.write(x.encode())
+            printSend(x.replace('\n',''))
+            line =  progPort.readline().decode().replace('\r','').replace('\n','')
+            printRecieve(str(line))
+            while (line != 'mmwDemo:/>'):
+                if (x == 'sensorStart'):
+                    continue
+                line =  progPort.readline().decode().replace('\r','').replace('\n','')
+                printRecieve(str(line))
+        except UnicodeDecodeError:
+            print("Bad read, trying again")
+            progPort.write(x.encode())
+            printSend(x.replace('\n',''))
+            line =  progPort.readline().decode().replace('\r','').replace('\n','')
+            printRecieve(str(line))
+            while(line != 'mmwDemo:/>'):
+                line =  progPort.readline().decode().replace('\r','').replace('\n','')
+                printRecieve(str(line))
+
+
+
+def printSend(line: str):
+    """
+    Prints input to in GREEN text, speciffically used for printting messages sent over COM port
+    """
+    print(Fore.GREEN + line + Fore.WHITE)
+
+
+def printRecieve(line: str):
+    """
+    Prints input to in BLUE text, speciffically used for printting messages recieved over COM port
+    """
+    print(Fore.BLUE + line + Fore.WHITE)
+
+
 
 # ------------------------------------------------------------------
 
@@ -82,154 +123,6 @@ def parseConfigFile(configFileName):
 # ------------------------------------------------------------------
 
 
-
-# Funtion to read and parse the incoming data
-def readAndParseData18xx(Dataport, configParameters):
-    global byteBuffer, byteBufferLength
-    t = 0
-    # Constants
-    OBJ_STRUCT_SIZE_BYTES = 12;
-    BYTE_VEC_ACC_MAX_SIZE = 2**15;
-    MMWDEMO_UART_MSG_DETECTED_POINTS = 1;
-    MMWDEMO_UART_MSG_RANGE_PROFILE   = 2;
-    maxBufferSize = 2**15;
-    tlvHeaderLengthInBytes = 8;
-    pointLengthInBytes = 16;
-    magicWord = [2, 1, 4, 3, 6, 5, 8, 7]
-    
-    # Initialize variables
-    magicOK = 0 # Checks if magic number has been read
-    dataOK = 0 # Checks if the data has been read correctly
-    frameNumber = 0
-    detObj = {}
-    
-    readBuffer = Dataport.read(Dataport.in_waiting)
-    byteVec = np.frombuffer(readBuffer, dtype = 'uint8')
-    byteCount = len(byteVec)
-    
-    # Check that the buffer is not full, and then add the data to the buffer
-    if (byteBufferLength + byteCount) < maxBufferSize:
-        byteBuffer[byteBufferLength:byteBufferLength + byteCount] = byteVec[:byteCount]
-        byteBufferLength = byteBufferLength + byteCount
-        
-    # Check that the buffer has some data
-    if byteBufferLength > 16:
-        
-        # Check for all possible locations of the magic word
-        possibleLocs = np.where(byteBuffer == magicWord[0])[0]
-
-        # Confirm that is the beginning of the magic word and store the index in startIdx
-        startIdx = []
-        for loc in possibleLocs:
-            check = byteBuffer[loc:loc+8]
-            if np.all(check == magicWord):
-                startIdx.append(loc)
-               
-        # Check that startIdx is not empty
-        if startIdx:
-            
-            # Remove the data before the first start index
-            if startIdx[0] > 0 and startIdx[0] < byteBufferLength:
-                byteBuffer[:byteBufferLength-startIdx[0]] = byteBuffer[startIdx[0]:byteBufferLength]
-                byteBuffer[byteBufferLength-startIdx[0]:] = np.zeros(len(byteBuffer[byteBufferLength-startIdx[0]:]),dtype = 'uint8')
-                byteBufferLength = byteBufferLength - startIdx[0]
-                
-            # Check that there have no errors with the byte buffer length
-            if byteBufferLength < 0:
-                byteBufferLength = 0
-                
-            # word array to convert 4 bytes to a 32 bit number
-            word = [1, 2**8, 2**16, 2**24]
-            
-            # Read the total packet length
-            totalPacketLen = np.matmul(byteBuffer[12:12+4],word)
-            
-            # Check that all the packet has been read
-            if (byteBufferLength >= totalPacketLen) and (byteBufferLength != 0):
-                magicOK = 1
-    
-    # If magicOK is equal to 1 then process the message
-    if magicOK:
-        # word array to convert 4 bytes to a 32 bit number
-        word = [1, 2**8, 2**16, 2**24]
-        
-        # Initialize the pointer index
-        idX = 0
-        
-        # Read the header
-        magicNumber = byteBuffer[idX:idX+8]
-        idX += 8
-        version = format(np.matmul(byteBuffer[idX:idX+4],word),'x')
-        idX += 4
-        totalPacketLen = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        platform = format(np.matmul(byteBuffer[idX:idX+4],word),'x')
-        idX += 4
-        frameNumber = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        timeCpuCycles = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        numDetectedObj = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        numTLVs = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-        subFrameNumber = np.matmul(byteBuffer[idX:idX+4],word)
-        idX += 4
-
-        # Read the TLV messages
-        for tlvIdx in range(numTLVs):
-            
-            # word array to convert 4 bytes to a 32 bit number
-            word = [1, 2**8, 2**16, 2**24]
-
-            # Check the header of the TLV message
-            tlv_type = np.matmul(byteBuffer[idX:idX+4],word)
-            idX += 4
-            tlv_length = np.matmul(byteBuffer[idX:idX+4],word)
-            idX += 4
-
-            # Read the data depending on the TLV message
-            if tlv_type == MMWDEMO_UART_MSG_DETECTED_POINTS:
-
-                # Initialize the arrays
-                x = np.zeros(numDetectedObj,dtype=np.float32)
-                y = np.zeros(numDetectedObj,dtype=np.float32)
-                z = np.zeros(numDetectedObj,dtype=np.float32)
-                velocity = np.zeros(numDetectedObj,dtype=np.float32)
-                
-                for objectNum in range(numDetectedObj):
-                    
-                    # Read the data for each object
-                    x[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                    y[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                    z[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                    velocity[objectNum] = byteBuffer[idX:idX + 4].view(dtype=np.float32)
-                    idX += 4
-                
-                # Store the data in the detObj dictionary
-                detObj = {"numObj": numDetectedObj, "x": x, "y": y, "z": z, "velocity":velocity}
-                
-                dataOK = 1
- 
-        # Remove already processed data
-        if idX > 0 and byteBufferLength>idX:
-            shiftSize = totalPacketLen
-            
-                
-            byteBuffer[:byteBufferLength - shiftSize] = byteBuffer[shiftSize:byteBufferLength]
-            byteBuffer[byteBufferLength - shiftSize:] = np.zeros(len(byteBuffer[byteBufferLength - shiftSize:]),dtype = 'uint8')
-            byteBufferLength = byteBufferLength - shiftSize
-            
-            # Check that there are no errors with the buffer length
-            if byteBufferLength < 0:
-                byteBufferLength = 0         
-
-    return dataOK, frameNumber, detObj
-
-
 x = np.zeros(80)
 y = np.zeros(80)
 v = np.zeros(80)
@@ -239,12 +132,12 @@ OFFSET = 20
 frNum = 0
 
 
-def mmw(cliPort, dataPort, sem):
+def mmw(cliPort, dataPort):
     global frNum
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
 
-    configFileName = repoPath + "AWR1843config.cfg"
+    configFileName = repoPath + "radar_config2.cfg"
     
     MAX_NUM_OBJS = 10
     NUM_FRAMES=80
@@ -261,23 +154,40 @@ def mmw(cliPort, dataPort, sem):
 
     t = 0
 
+    totalBytesParsed = 0
+    line =  dataPort.readline()
+    data = line
+
     while True:
-        sem.acquire()
-        # print("here3")
-        # Check if the semaphore value is -1
-        if sem._value == -1:
-            print("mmWave Thread killed")
-            break
+        line = dataPort.readline()
+        data += line
         
-        dataOk, \
-        _, \
-        detObj = readAndParseData18xx(dataPort, 
-                                      configParameters)
+        parser_result, \
+        headerStartIndex,  \
+        totalPacketNumBytes, \
+        numDetObj,  \
+        numTlv,  \
+        subFrameNumber,  \
+        detectedX_array,  \
+        detectedY_array,  \
+        detectedZ_array,  \
+        detectedV_array,  \
+        detectedRange_array,  \
+        detectedAzimuth_array,  \
+        detectedElevation_array,  \
+        detectedSNR_array,  \
+        detectedNoise_array = parser_one_mmw_demo_output_packet(data[totalBytesParsed::1], len(data)-totalBytesParsed, enablePrint=False, errorPrint=False) 
 
         t += 1
         timeLen = 0
 
-        if (dataOk):
+
+
+        if (parser_result == 0):
+            totalBytesParsed += (headerStartIndex+totalPacketNumBytes) 
+
+            detObj = {"numObj": numDetObj, "x": detectedX_array, "y": detectedY_array, "z": detectedZ_array, "v":detectedV_array}
+
             frNum += 1
 
             if not ("numObj" in detObj.keys()): # This probably never happens
@@ -290,57 +200,49 @@ def mmw(cliPort, dataPort, sem):
                 detObj["frNum"] = frNum
                 queueLogs.put(detObj)
 
-
-
-            # print(detObj)
-
-            # while o < detObj["numObj"]:
-            #     obj = np.array([frameNumber, detObj["x"][o], 
-            #                     detObj["y"][o],
-            #                     detObj["velocity"][o]])
-                
-            #     frame.append(obj)
-            #     o += 1
-                # print(o, obj)
-
-            # while o < MAX_NUM_OBJS:
-            #     frame.append([[0.] * 5])
-            #     o += 1
+            closestPoint = torch.Tensor([100,100,100])
+            closestNorm = closestPoint.norm()
             
-            n = np.linalg.norm(detObj["velocity"])
+            for x, y, z, v in zip(detectedX_array, detectedY_array, detectedZ_array, detectedV_array):
+                if (v != 0):
+                    point = torch.Tensor([x,y,z])
+                    norm = point.norm()
+
+                    if (norm < closestNorm):
+                            closestPoint = torch.Tensor([x, y, z])
+                            closestNorm = closestPoint.norm()
+
+            if closestNorm == torch.Tensor([100, 100, 100]).norm():
+                continue
+
+            print("Object detected at ")
+            print("(x, y, z): ", str("(") + str(closestPoint[0]), str(closestPoint[1]) + str(")"))
+
+            posString = ""
+
+            if closestPoint[2] < Z_BOUND:
+                posString += "Bottom"
+
+            elif closestPoint[2] < Z_BOUND * 2:
+                posString += "Middle"
             
-            if (n > 0.1 or startSeq):
+            else:
+                posString += "Top"
 
-                if (not startSeq):
-                    t = 0
-                    timeLen = round(time.time(), 4)
+            posString += " "
 
-                # if (n > 0.1):
-                #     print(str(frameNumber) + ": ", detObj["velocity"], "  norm = ", n)
+            if closestPoint[0] < -X_BOUND:
+                posString += "right"
 
-                numPoints += detObj["numObj"]
+            elif closestPoint[0] > X_BOUND: 
+                posString += "left"
 
-                
-
-                startSeq = True
+            else:
+                posString += "centre"
 
 
-                frameNumber += 1
+            print(posString)
 
-            #### ALSO ADD CONDITION TO KEEP WITHIN A CERTAIN TIME
-            if (frameNumber >= NUM_FRAMES):
-                # print("-------------------------")
-                # print("Moving points:", numMovingPoints)
-                # print("Total points:", numPoints)
-                # print("i =", t)
-                # # print("time =", round(time.time(), 4) - timeLen)
-                # print("-------------------------")
-                startSeq = False
-                frameNumber = 0
-                numPoints = 0
-                numMovingPoints = 0
-                t = 0
 
-        sem.release()
-        time.sleep(0.01)
+
            
