@@ -392,6 +392,7 @@ def mmw(cliPort, dataPort):
                 print("Left Click")
                 button_clicked(7)
             if (posString == "Middle centre" and prevMove == "Middle centre" and firstCentreForDouble):
+                button_clicked(5)
                 print("DO A BARREL ROLL")
 
             prevMove = posString
