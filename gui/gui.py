@@ -221,10 +221,13 @@ frNum = 0
 
 def mmw(cliPort, dataPort):
     global frNum
+    global prevMove
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
+    repoPath = os.path.expanduser("~/Documents/Kratos-Red/mmwave_cfgs/")
 
     configFileName = repoPath + "radar_config2.cfg"
+
+    prevMove = ""
 
     serialConfig(cliPort, configFileName)
 
@@ -234,6 +237,8 @@ def mmw(cliPort, dataPort):
     totalBytesParsed = 0
     line =  dataPort.readline()
     data = line
+
+    firstCentreForDouble = False
 
     while True:
         line = dataPort.readline()
@@ -277,23 +282,22 @@ def mmw(cliPort, dataPort):
                 queueLogs.put(detObj)
 
             closestPoint = torch.Tensor([100,100,100])
-            closestNorm = closestPoint.norm()
+            closestY = closestPoint[1]
             
             for x, y, z, v in zip(detectedX_array, detectedY_array, detectedZ_array, detectedV_array):
                 if (v != 0):
                     point = torch.Tensor([x,y,z])
-                    norm = point.norm()
 
-                    if (norm < closestNorm):
+                    if (y < closestY):
                             closestPoint = torch.Tensor([x, y, z])
-                            closestNorm = closestPoint.norm()
+                            closestNorm = closestPoint[1]
 
-            if closestNorm == torch.Tensor([100, 100, 100]).norm():
+            if closestY == closestPoint[1]:
                 continue
 
-            print("---------------------------")
-            print("Object detected at ")
-            print("(x, y, z): ", str("(") + str(closestPoint[0]), str(closestPoint[1]) + str(")"))
+            # print("---------------------------")
+            # print("Object detected at ")
+            # print("(x, y, z): ", str("(") + str(closestPoint[0]), str(closestPoint[1]) + str(")"))
 
             posString = ""
 
@@ -317,9 +321,40 @@ def mmw(cliPort, dataPort):
             else:
                 posString += "centre"
 
-            print(posString)
-            print("---------------------------")
+            # print(posString)
+            # print(prevMove)
+            # print("---------------------------")
 
+            if (posString == "Bottom centre" and prevMove == "Middle centre"):
+                print("Going down")
+                button_clicked(2)
+            if (posString == "Top centre" and prevMove == "Middle centre"):
+                print("Going up")
+                button_clicked(1)
+            if (posString == "Middle left" and prevMove == "Middle centre"):
+                print("Going left")
+                button_clicked(0)
+            if (posString == "Middle right" and prevMove == "Middle centre"):
+                print("Going right")
+                button_clicked(3)
+            if ((posString == "Middle right" or posString == "Bottom right") and prevMove == "Top right"):
+                print("Right Click")
+                button_clicked(4)
+            if ((posString == "Middle left" or posString == "Bottom left") and prevMove == "Top left"):
+                print("Left Click")
+                button_clicked(7)
+            if (posString == "Middle centre" and prevMove == "Middle centre" and firstCentreForDouble):
+                print("DO A BARREL ROLL")
+
+            prevMove = posString
+
+            if (posString == "Middle centre"):
+                firstCentreForDouble = not firstCentreForDouble
+                print("Centered")
+            else:
+                firstCentreForDouble = False
+           
+"""
             if (posString == "Bottom right"):
                 button_clicked(1-1)
 
@@ -346,6 +381,7 @@ def mmw(cliPort, dataPort):
 
             # elif (posString == "Middle centre"):
             #     button_clicked(8)
+"""
 
 
 
