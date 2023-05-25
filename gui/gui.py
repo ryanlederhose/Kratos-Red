@@ -105,7 +105,6 @@ def handle_hid(direction):
     
     try:
         if direction == 1: #UP
-            pyautogui.
             pyautogui.move(0, -distance)
         elif direction == 2: #DOWN
             pyautogui.move(0, distance)
@@ -138,7 +137,7 @@ def handle_hid(direction):
         else:
             return
     
-    except pyautogui.FailSafeError:
+    except pyautogui.FailSafeException:
         return
 
 
