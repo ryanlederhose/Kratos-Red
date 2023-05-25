@@ -7,8 +7,18 @@ import serial
 import serial.tools.list_ports
 import threading, queue, pyautogui
 from mmWaveProcessing import *
-from datalog import *
 import math
+import influxdb_client, os, time
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
+
+INFLUXDB_TOKEN="wJmCnn5sL-6yBFoiHlhQcylFfxtwkLMyc6qPXUYTF4gBe95MFlNZF7qWiAqHMFrOCSdpvDo5XCCIPDDwIO3M3Q=="
+org = "CSSE4011 P3B"
+url = "https://us-east-1-1.aws.cloud2.influxdata.com"
+client = InfluxDBClient(url=url, token=INFLUXDB_TOKEN, org=org)
+bucket="test4011"
+
+write_api = client.write_api(write_options=SYNCHRONOUS)
 
 history = []
 current_button = None
@@ -218,14 +228,52 @@ OFFSET = 20
 
 frNum = 0
 
+def influxSend():
+    global queueLogs
+    prevTime = 0
+    current_time = 0
+
+    while True:
+
+        if not queueLogs.empty():
+            current_time = time.time()
+
+        if current_time > prevTime + 1:
+            prevTime = time.time()
+            dataObj = queueLogs.get()
+
+            X = -dataObj["x"].item()
+            Y = dataObj["y"].item()
+            V = dataObj["v"]
+            Z = dataObj["z"].item()
+            ObjNum = dataObj["objNum"]
+            frameNum = dataObj["frNum"]
+
+            
+            point = (
+                Point("mmWave_Test")
+                .field("Frame_Number", frameNum)
+                .field("Object_Number", ObjNum)
+                .field("V", V)
+                .field("x", X)
+                .field("y", Y)
+                .field("z", Z)
+                )
+                
+            write_api.write(bucket=bucket, org=org, record=point)
+        
+        time.sleep(0.1)
+
+
+
 
 def mmw(cliPort, dataPort):
     global frNum
     global prevMove
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
+    # repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
 
-    configFileName = repoPath + "radar_config2.cfg"
+    configFileName = "radar_config2.cfg"
 
     prevMove = ""
 
@@ -406,30 +454,22 @@ def connect_to_com4():
     # Connection to BSU and mmW
     global BSU_connected, mmW_cli_connected, mmW_data_connected
 
-    donglePort = "/dev/ttyACM2"
-    cliPort = "/dev/ttyACM0"
-    dataPort = "/dev/ttyACM1"
+    donglePort = "COM9"
+    cliPort = "COM7"
+    dataPort = "COM6"
 
     ports = serial.tools.list_ports.comports()
 
     try:
         dongle = serial.Serial(donglePort, baudrate=115200, timeout=1)
         dongle.write(b"\n")
-        try:
-            prompt1 = dongle.readline().decode('utf-8')
-            prompt2 = dongle.readline().decode('utf-8')
-        except:
-            prompt1 = dongle.readline().decode('utf-8')
-            prompt2 = dongle.readline().decode('utf-8')
 
-        if prompt2 == '\x1b[1;32mnRF-Central:~$ \x1b[m':
-            print("Starting BSU Thread")
-            bsu_thread = threading.Thread(target=bsu, args=(dongle,))
-            bsu_thread.start()
-            BSU_connected = "Connected to BSU on " + donglePort
-        else:
-            dongle.close()
-            raise serial.serialutil.SerialException
+
+        print("Starting BSU Thread")
+        bsu_thread = threading.Thread(target=bsu, args=(dongle,))
+        bsu_thread.start()
+        BSU_connected = "Connected to BSU on " + donglePort
+
     
     except serial.serialutil.SerialException:
         print("Could not connect to " + donglePort)
@@ -455,8 +495,8 @@ def connect_to_com4():
 
     scatter_thread = threading.Thread(target=plot_scatter)
     scatter_thread.start()
-    # database_thread = threading.Thread(target=influxSend)
-    # database_thread.start()
+    database_thread = threading.Thread(target=influxSend)
+    database_thread.start()
 
     messagebox.showinfo("Connection Status", BSU_connected + "\n" + 
             mmW_cli_connected + "\n" + mmW_data_connected)
@@ -525,7 +565,7 @@ fig.subplots_adjust(wspace=0.1)
 # plot_scatter(ax2)/
 
 # Add the LED RESET and CONNECT buttons        
-reset_button = tk.Button(bottom_frame, text="RESET LED", font=('Arial', 16), command=lambda:button_queue.put(6))
+reset_button = tk.Button(bottom_frame, text="RESET LED", font=('Arial', 16), command=lambda:button_queue.put(8  ))
 reset_button.pack(side=tk.TOP, padx=1, pady=10)
 
 connect_button = tk.Button(bottom_frame, text="CONNECT", font=('Arial', 16), command=connect_to_com4)
