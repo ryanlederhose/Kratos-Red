@@ -102,43 +102,43 @@ def bsu(ser):
 
 def handle_hid(direction):
     distance = 500
-    
-    try:
-        if direction == 1: #UP
-            pyautogui.move(0, -distance)
-        elif direction == 2: #DOWN
-            pyautogui.move(0, distance)
-        elif direction == 0: #LEFT
-            pyautogui.move(-distance, 0)
-        elif direction == 3: #RIGHT
-            pyautogui.move(distance, 0)
-        elif direction == 4: #FLIP UP
-            pyautogui.click(button='right')
-        elif direction == 7: #FLIP DOWN
-            pyautogui.click(button='left')
-        elif direction == 5: #CW
-            center_x, center_y = pyautogui.position()
-            radius = 50
-            steps = 5
-            for step in range(steps):
-                angle = (2 * math.pi * step) / steps
-                x = center_x + radius * math.cos(angle)
-                y = center_y + radius * math.sin(angle)
-                pyautogui.moveTo(x, y)
-        elif direction == 6: #CCW
-            center_x, center_y = pyautogui.position()
-            radius = 50
-            steps = 5
-            for step in range(steps):
-                angle = (2 * math.pi * step) / steps
-                x = center_x - radius * math.cos(angle)
-                y = center_y + radius * math.sin(angle)
-                pyautogui.moveTo(x, y)
-        else:
+    if mouse_enable.get() == 1:
+        try:
+            if direction == 1: #UP
+                pyautogui.move(0, -distance)
+            elif direction == 2: #DOWN
+                pyautogui.move(0, distance)
+            elif direction == 0: #LEFT
+                pyautogui.move(-distance, 0)
+            elif direction == 3: #RIGHT
+                pyautogui.move(distance, 0)
+            elif direction == 4: #FLIP UP
+                pyautogui.click(button='right')
+            elif direction == 7: #FLIP DOWN
+                pyautogui.click(button='left')
+            elif direction == 5: #CW
+                center_x, center_y = pyautogui.position()
+                radius = 50
+                steps = 5
+                for step in range(steps):
+                    angle = (2 * math.pi * step) / steps
+                    x = center_x + radius * math.cos(angle)
+                    y = center_y + radius * math.sin(angle)
+                    pyautogui.moveTo(x, y)
+            elif direction == 6: #CCW
+                center_x, center_y = pyautogui.position()
+                radius = 50
+                steps = 5
+                for step in range(steps):
+                    angle = (2 * math.pi * step) / steps
+                    x = center_x - radius * math.cos(angle)
+                    y = center_y + radius * math.sin(angle)
+                    pyautogui.moveTo(x, y)
+            else:
+                return
+
+        except pyautogui.FailSafeException:
             return
-    
-    except pyautogui.FailSafeException:
-        return
 
 
 def button_clicked(idx):
@@ -485,6 +485,10 @@ connect_button.pack(side=tk.TOP, padx=1, pady=10)
 
 flag_state = tk.BooleanVar()
 checkbox = tk.Checkbutton(checkbox_frame, text="Collect Data", variable=flag_state)
+checkbox.pack(side=tk.BOTTOM, padx=1, pady=10)
+
+mouse_enable = tk.BooleanVar()
+checkbox = tk.Checkbutton(checkbox_frame, text="Mouse Toggle", variable=mouse_enable)
 checkbox.pack(side=tk.BOTTOM, padx=1, pady=10)
 
 # Add the plots to the GUI
