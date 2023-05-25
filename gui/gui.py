@@ -223,7 +223,7 @@ def mmw(cliPort, dataPort):
     global frNum
     global prevMove
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    repoPath = os.path.expanduser("~/Documents/Kratos-Red/mmwave_cfgs/")
+    repoPath = os.path.expanduser("~/Kratos-Red/mmwave_cfgs/")
 
     configFileName = repoPath + "radar_config2.cfg"
 
@@ -274,23 +274,23 @@ def mmw(cliPort, dataPort):
             if not ("numObj" in detObj.keys()): # This probably never happens
                 continue
 
-            if not queueXY.full(): 
-                queueXY.put(detObj)
-
-            if not queueLogs.full(): 
-                detObj["frNum"] = frNum
-                queueLogs.put(detObj)
-
             closestPoint = torch.Tensor([100,100,100])
             closestY = closestPoint[1]
+            closestV = -1
+            objNumTmp = 0
+            objNum = 0
             
             for x, y, z, v in zip(detectedX_array, detectedY_array, detectedZ_array, detectedV_array):
+                objNumTmp += 1
                 if (v != 0):
                     point = torch.Tensor([x,y,z])
 
                     if (y < closestY):
                             closestPoint = torch.Tensor([x, y, z])
                             closestNorm = closestPoint[1]
+                            closestV = v
+                            objNum = objNumTmp
+                            
 
             if closestY == closestPoint[1]:
                 continue
@@ -354,6 +354,18 @@ def mmw(cliPort, dataPort):
             else:
                 firstCentreForDouble = False
            
+            if not queueXY.full(): 
+                queueXY.put(detObj)
+
+            if not queueLogs.full(): 
+                detObj = {"frNum" : frNum, 
+                          "x" : closestPoint[0], 
+                          "y" : closestPoint[1], 
+                          "z" : closestPoint[2],
+                          "v" : closestV,
+                          "objNum" : objNum}
+                
+                queueLogs.put(detObj)
 """
             if (posString == "Bottom right"):
                 button_clicked(1-1)
