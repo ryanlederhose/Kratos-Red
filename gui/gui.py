@@ -102,38 +102,43 @@ def bsu(ser):
 
 def handle_hid(direction):
     distance = 500
-
-    if direction == 1: #UP
-        pyautogui.move(0, -distance)
-    elif direction == 2: #DOWN
-        pyautogui.move(0, distance)
-    elif direction == 0: #LEFT
-        pyautogui.move(-distance, 0)
-    elif direction == 3: #RIGHT
-        pyautogui.move(distance, 0)
-    elif direction == 4: #FLIP UP
-        pyautogui.click(button='right')
-    elif direction == 7: #FLIP DOWN
-        pyautogui.click(button='left')
-    elif direction == 5: #CW
-        center_x, center_y = pyautogui.position()
-        radius = 50
-        steps = 5
-        for step in range(steps):
-            angle = (2 * math.pi * step) / steps
-            x = center_x + radius * math.cos(angle)
-            y = center_y + radius * math.sin(angle)
-            pyautogui.moveTo(x, y)
-    elif direction == 6: #CCW
-        center_x, center_y = pyautogui.position()
-        radius = 50
-        steps = 5
-        for step in range(steps):
-            angle = (2 * math.pi * step) / steps
-            x = center_x - radius * math.cos(angle)
-            y = center_y + radius * math.sin(angle)
-            pyautogui.moveTo(x, y)
-    else:
+    
+    try:
+        if direction == 1: #UP
+            pyautogui.
+            pyautogui.move(0, -distance)
+        elif direction == 2: #DOWN
+            pyautogui.move(0, distance)
+        elif direction == 0: #LEFT
+            pyautogui.move(-distance, 0)
+        elif direction == 3: #RIGHT
+            pyautogui.move(distance, 0)
+        elif direction == 4: #FLIP UP
+            pyautogui.click(button='right')
+        elif direction == 7: #FLIP DOWN
+            pyautogui.click(button='left')
+        elif direction == 5: #CW
+            center_x, center_y = pyautogui.position()
+            radius = 50
+            steps = 5
+            for step in range(steps):
+                angle = (2 * math.pi * step) / steps
+                x = center_x + radius * math.cos(angle)
+                y = center_y + radius * math.sin(angle)
+                pyautogui.moveTo(x, y)
+        elif direction == 6: #CCW
+            center_x, center_y = pyautogui.position()
+            radius = 50
+            steps = 5
+            for step in range(steps):
+                angle = (2 * math.pi * step) / steps
+                x = center_x - radius * math.cos(angle)
+                y = center_y + radius * math.sin(angle)
+                pyautogui.moveTo(x, y)
+        else:
+            return
+    
+    except pyautogui.FailSafeError:
         return
 
 
